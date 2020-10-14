@@ -101,7 +101,8 @@ for sub in source_dir.glob('sub-*'):
                    event_id=event_id, 
                    events_data=events, 
                    anonymize=anonymize,
-                   overwrite=overwrite)
+                   overwrite=overwrite,
+                   verbose=False)
     
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
