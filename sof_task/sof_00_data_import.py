@@ -5,27 +5,28 @@ Description: This script imports data from sourcedata to bids format for
 the SOF (scene, object, face) task. 
 """
 
-#####---Change Directory to Script Directory---#####
+#####---Import Libraries---#####
 import os
 import sys
-os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
 
-#####---Overwrite BIDS---#####
-overwrite = True
-
-#####---Import Libraries---#####
 import pandas as pd
 import json
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
-from mne_bids import write_raw_bids, make_bids_basename, make_bids_folders
+from mne_bids import write_raw_bids, make_bids_basename
 
 from sof_config import bids_dir, source_dir, event_dict, task, bad_chans
 
+#####---Change Directory to Script Directory---#####
+os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
+
+#####---Overwrite BIDS---#####
+overwrite = True
+
 #####---Anonymize Dictionary---#####
 anonymize = {
-    'daysback': 365.25*100
+    'daysback': 365.1275*100
 }
 
 #####---Event Dictionary to Keep---#####
