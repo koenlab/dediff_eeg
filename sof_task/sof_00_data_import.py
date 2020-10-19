@@ -132,8 +132,8 @@ for sub in source_dir.glob('sub-*'):
         
     ### PROCESS BEHAVIORAL DATA FILE ###
     # Read in the sof*.tsv behavioral file
-    beh_file = sub_source_dir / f'{sub_string}_task-{task}_run-01_beh.tsv'
-    beh_data = pd.read_csv(beh_file,sep='\t')
+    beh_source_file = sub_source_dir / f'{sub_string}_task-{task}_run-01_beh.tsv'
+    beh_data = pd.read_csv(beh_source_file,sep='\t')
     
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
     beh_data['resp'] = beh_data['resp'].fillna('n/a')
@@ -153,23 +153,31 @@ for sub in source_dir.glob('sub-*'):
     beh_data.rename(columns=cols_to_rename, inplace=True)
     beh_data.drop(columns=cols_to_drop, inplace=True)
     
+    # Save behavioral data
+    beh_save_file = sub_beh_dir / f'sub-{bids_id}_task-{task}_beh.tsv'
+    beh_data.to_csv(beh_save_file, sep='\t', index=False)
+    
+
     ### UPDATE *_EVENTS.TSV ###
     # Load *events.tsv
     events_file = sub_eeg_dir / f'sub-{bids_id}_task-{task}_events.tsv'
     events_data = pd.read_csv(events_file,sep='\t')
-    events_data[cols_to_add] = beh_data[cols_to_add]
-    
+
+    # Add new columnas as "n/a" values
+    events_data[cols_to_add] = 'n/a'
+
+    # Update with values
+    counter = 0 # Keep track of current row in beh_data
+    for index, row in events_data.iterrows():
+        if row['trial_type'] != 'boundary':
+            this_trial = beh_data.iloc[counter]
+            for col in cols_to_add:
+                events_data.at[index, col] = this_trial[col]
+            counter += 1
+
     # Overwrite *events.tsv
     events_data.to_csv(events_file, sep='\t', index=False)
 
-    ### UPDATE AND SAVE BEHAVIORAL DATA ###
-    # Add marker from events.tsv to beh.tsv
-    beh_data['eeg_marker'] = events_data['value']
-    
-    # Save behavioral data
-    beh_file = sub_beh_dir / f'sub-{bids_id}_task-{task}_beh.tsv'
-    beh_data.to_csv(beh_file, sep='\t', index=False)
-    
     ### UPDATE *eeg_json
     # Load JSON
     eeg_json_file = sub_eeg_dir / f'sub-{bids_id}_task-{task}_eeg.json'
