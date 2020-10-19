@@ -1,3 +1,7 @@
+# MacOS and Server
+.DS_Store
+*@eaDir
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
