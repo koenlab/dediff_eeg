@@ -29,7 +29,8 @@ anonymize = {
     'daysback': 365.1275*100
 }
 
-#####---Event Dictionary to Keep---#####
+#####---Event Dictionaries for renaming and output---#####
+# Rename dictionary
 rename_dict = {
     'New Segment/': 'boundary',
     'Marker/M 11': 'scene/novel',
@@ -39,6 +40,9 @@ rename_dict = {
     'Marker/M 31': 'face/novel',
     'Marker/M 32': 'face/1back'
 }
+
+# Add boundary to event_dict
+event_dict['boundary'] = -99
 
 #####---Data columns to keep and add---#####
 # List of data columns to drop behavioral data file
@@ -82,7 +86,10 @@ for sub in source_dir.glob('sub-*'):
     raw = read_raw_brainvision(bv_file,
                                misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
-    
+
+    # Update line frequency to 60 Hz
+    raw.info['line_freq'] = 60.0
+
     # Update event descriptions
     description = raw.annotations.description
     for old_name, new_name in rename_dict.items():
@@ -113,15 +120,15 @@ for sub in source_dir.glob('sub-*'):
     chans_data['status_description'] = 'n/a'
     if sub_bad_chans is not None:
         for chan, reason in sub_bad_chans.items():
-            chans_data['status_description'][chans_data['name']==chan] = reason
+            chans_data.loc[chans_data['name'] == chan, ['status_description']] = reason
     
     # Add EEGReference
     chans_data['reference'] = 'FCz'
-    for chan in ['VEOG' 'HEOG' 'Photosensor']:
-        chans_data['reference'][chans_data['name']==chan] = 'n/a'
+    for chan in ['VEOG', 'HEOG', 'Photosensor']:
+        chans_data.loc[chans_data['name']==chan, ['reference']] = 'n/a'
     
     # Overwrite file
-    chans_data.to_csv(chans_file, sep='\t')
+    chans_data.to_csv(chans_file, sep='\t',index=False)
         
     ### PROCESS BEHAVIORAL DATA FILE ###
     # Read in the sof*.tsv behavioral file
@@ -153,7 +160,7 @@ for sub in source_dir.glob('sub-*'):
     events_data[cols_to_add] = beh_data[cols_to_add]
     
     # Overwrite *events.tsv
-    events_data.to_csv(events_file, sep='\t')
+    events_data.to_csv(events_file, sep='\t', index=False)
 
     ### UPDATE AND SAVE BEHAVIORAL DATA ###
     # Add marker from events.tsv to beh.tsv
@@ -161,7 +168,7 @@ for sub in source_dir.glob('sub-*'):
     
     # Save behavioral data
     beh_file = sub_beh_dir / f'sub-{bids_id}_task-{task}_beh.tsv'
-    beh_data.to_csv(beh_file, sep='\t')
+    beh_data.to_csv(beh_file, sep='\t', index=False)
     
     ### UPDATE *eeg_json
     # Load JSON
@@ -170,9 +177,9 @@ for sub in source_dir.glob('sub-*'):
         eeg_json = json.load(file)
     
     # Update keys
-    eeg_json['EEGReference'] = 'EEG channels onlined referenced to FCz. EOG channels are bipolar'
+    eeg_json['EEGReference'] = 'FCz'
     eeg_json['EEGGround'] = 'Fpz'
-    eeg_json['PowerLineFrequency'] = 60
+    #eeg_json['PowerLineFrequency'] = 60
     
     # Save EEG JSON
     with open(eeg_json_file,'w') as file:
