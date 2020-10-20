@@ -22,7 +22,7 @@ from sof_config import bids_dir, source_dir, event_dict, task, bad_chans
 os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
 
 #####---Overwrite BIDS---#####
-overwrite = True
+overwrite = False
 
 #####---Anonymize Dictionary---#####
 anonymize = {
@@ -80,8 +80,12 @@ for sub in source_dir.glob('sub-*'):
     # Make behavioral directory
     sub_beh_dir.mkdir(parents=True, exist_ok=True)
     
+    # If EEG file alread writen skip this person
+    if  sub_bids_dir.joinpath(f'{bids_basename}_eeg.vhdr').is_file() and not overwrite:
+        continue
+    
     ### WRITE EEG TO BIDS FORMAT ###
-    # Read in the raw bv file
+    # Define the raw BV file and read it in
     bv_file = source_dir / sub_string / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
     raw = read_raw_brainvision(bv_file,
                                misc=['Photosensor'],
