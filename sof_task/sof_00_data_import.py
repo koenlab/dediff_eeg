@@ -6,15 +6,14 @@ the SOF (scene, object, face) task.
 """
 
 #####---Import Libraries---#####
-import os
-import sys
-
+import numpy as np
 import pandas as pd
 import json
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
 from mne_bids import BIDSPath, write_raw_bids
+from mne_bids.copyfiles import copyfile_brainvision
 
 import mne
 
@@ -205,3 +204,4 @@ for sub in source_dir.glob('sub-*'):
     # Write events
     events_out_file = deriv_path.directory / (deriv_path.fpath.name + '_desc-import_eve.txt')
     mne.write_events(events_out_file, events)
+    
