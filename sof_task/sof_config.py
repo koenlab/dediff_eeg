@@ -1,6 +1,10 @@
 from pathlib import Path
 import platform
 
+
+### Define task name ###
+task = 'sof'
+
 ### List of Known Bad Channels ###
 bad_chans = {
     '115': {
@@ -31,9 +35,11 @@ source_dir = data_dir / 'sourcedata'
 ### bids_dir ###
 # This is the bids formatted output directory
 bids_dir = data_dir / 'bids'
+bids_dir.mkdir(parents=True, exist_ok=True)
 
-### Define task name ###
-task = 'sof'
+### Derivatives directory ###
+deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
+deriv_dir.mkdir(parents=True, exist_ok=True)
 
 ### Define event dictionary ###
 event_dict = {
@@ -45,5 +51,12 @@ event_dict = {
     'face/1back': 32,
 }
 
+### Dictionary of preprocessing options
+preprocess_options = {
+    'resample': 250, 
+    'lowcutoff': .5, 
+    'epoch_tmin': -2.0,
+    'epoch_tmax': 2.0
+}
 
 
