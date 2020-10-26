@@ -68,12 +68,12 @@ for sub in source_dir.glob('sub-*'):
     source_path = source_dir / sub_string
     bids_path = BIDSPath(subject=bids_id, task=task,
                         datatype='eeg', root=bids_dir)
-    deriv_path = BIDSPath(subject=bids_id, task=task,
-                        datatype='eeg', root=deriv_dir)
+    deriv_path = deriv_dir / f'sub-{bids_id}'
+    deriv_path.mkdir(parents=True, exist_ok=True)
     print(f'Making BIDS data for sub-{bids_id} ({sub_id}) on task-{task}')
     print(f'  Source Path: {source_path}')
     print(f'  BIDS Path: {bids_path.directory}')
-    print(f'  Derivative Path: {deriv_path.directory}')
+    print(f'  Derivative Path: {deriv_path}')
     
     # If EEG file alread writen skip this person
     if  bids_path.directory.is_dir() and not overwrite:
@@ -106,7 +106,7 @@ for sub in source_dir.glob('sub-*'):
     # Write BIDS Output
     write_raw_bids(raw, bids_path=bids_path, event_id=event_id, 
                    events_data=events, anonymize=anonymize,
-                   overwrite=True, verbose=True)
+                   overwrite=True, verbose=False)
 
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
@@ -165,7 +165,8 @@ for sub in source_dir.glob('sub-*'):
     # Remove duplicat rows (mne-bids .5 bug) if needed
     if events.shape[0]*2 == events_data.shape[0]:
         events_data.drop(index=np.arange(1,events_data.shape[0]+1, step=2), 
-                        inplace=True).reset_index()
+                        inplace=True)
+    events_data.reset_index()
 
     # Add new columnas as "n/a" values
     events_data[cols_to_add] = 'n/a'
@@ -198,10 +199,10 @@ for sub in source_dir.glob('sub-*'):
 
     ### Write Raw and Events to .fif.gz file
     # Write Raw instance
-    raw_out_file = deriv_path.directory / (deriv_path.fpath.name + '_desc-import_raw.fif.gz')
+    raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_raw.fif.gz'
     raw.save(raw_out_file, overwrite=overwrite)
 
     # Write events
-    events_out_file = deriv_path.directory / (deriv_path.fpath.name + '_desc-import_eve.txt')
+    events_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.txt'
     mne.write_events(events_out_file, events)
     
