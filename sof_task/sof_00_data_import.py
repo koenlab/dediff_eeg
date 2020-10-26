@@ -14,15 +14,14 @@ import json
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
-from mne_bids import write_raw_bids, make_bids_basename
+from mne_bids import BIDSPath, write_raw_bids
 
-from sof_config import bids_dir, source_dir, event_dict, task, bad_chans
+import mne
 
-#####---Change Directory to Script Directory---#####
-os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
+from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
 
 #####---Overwrite BIDS---#####
-overwrite = False
+overwrite = True
 
 #####---Anonymize Dictionary---#####
 anonymize = {
@@ -63,37 +62,35 @@ cols_to_add = ['trial_number','category','subcategory','repeat','resp',
 for sub in source_dir.glob('sub-*'):
     
     ### SUBJECT INFORMATION DEFINITION ###
-    # Define the Subject ID
+    # Define the Subject ID and paths
     sub_string = sub.name
     sub_id = sub_string.replace('sub-','')
-    bids_id = sub_id.replace('p3e2s','')    
-    bids_basename = make_bids_basename(subject=bids_id,
-                                       task=task)
+    bids_id = sub_id.replace('p3e2s','')
+    source_path = source_dir / sub_string
+    bids_path = BIDSPath(subject=bids_id, task=task,
+                        datatype='eeg', root=bids_dir)
+    deriv_path = BIDSPath(subject=bids_id, task=task,
+                        datatype='eeg', root=deriv_dir)
     print(f'Making BIDS data for sub-{bids_id} ({sub_id}) on task-{task}')
-    
-    # Define some sobject directories
-    sub_source_dir = source_dir / sub_string
-    sub_bids_dir = bids_dir / f'sub-{bids_id}'
-    sub_eeg_dir = sub_bids_dir / 'eeg'
-    sub_beh_dir = sub_bids_dir / 'beh'
-    
-    # Make behavioral directory
-    sub_beh_dir.mkdir(parents=True, exist_ok=True)
+    print(f'  Source Path: {source_path}')
+    print(f'  BIDS Path: {bids_path.directory}')
+    print(f'  Derivative Path: {deriv_path.directory}')
     
     # If EEG file alread writen skip this person
-    if  sub_bids_dir.joinpath(f'{bids_basename}_eeg.vhdr').is_file() and not overwrite:
+    if  bids_path.directory.is_dir() and not overwrite:
         continue
     
     ### WRITE EEG TO BIDS FORMAT ###
-    # Define the raw BV file and read it in
-    bv_file = source_dir / sub_string / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
-    raw = read_raw_brainvision(bv_file,
-                               misc=['Photosensor'],
+    # Define the source data file 
+    source_vhdr = source_path / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
+
+    # Read in raw bv from source
+    raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
 
-    # Update line frequency to 60 Hz
+    # Update info of Raw
     raw.info['line_freq'] = 60.0
-
+    
     # Update event descriptions
     description = raw.annotations.description
     for old_name, new_name in rename_dict.items():
@@ -108,17 +105,14 @@ for sub in source_dir.glob('sub-*'):
         raw.info['bads'] = sub_bad_chans['channels']
         
     # Write BIDS Output
-    write_raw_bids(raw, bids_basename, bids_dir,
-                   event_id=event_id, 
-                   events_data=events, 
-                   anonymize=anonymize,
-                   overwrite=overwrite,
-                   verbose=False)
-    
+    write_raw_bids(raw, bids_path=bids_path, event_id=event_id, 
+                   events_data=events, anonymize=anonymize,
+                   overwrite=True, verbose=True)
+
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
-    chans_file = sub_eeg_dir / f'sub-{bids_id}_task-{task}_channels.tsv'
-    chans_data = pd.read_csv(chans_file, sep='\t')
+    bids_path.update(suffix='channels', extension='.tsv')
+    chans_data = pd.read_csv(bids_path.fpath, sep='\t')
     
     # Add status_description
     chans_data['status_description'] = 'n/a'
@@ -132,40 +126,47 @@ for sub in source_dir.glob('sub-*'):
         chans_data.loc[chans_data['name']==chan, ['reference']] = 'n/a'
     
     # Overwrite file
-    chans_data.to_csv(chans_file, sep='\t',index=False)
+    chans_data.to_csv(bids_path.fpath, sep='\t',index=False)
         
     ### PROCESS BEHAVIORAL DATA FILE ###
     # Read in the sof*.tsv behavioral file
-    beh_source_file = sub_source_dir / f'{sub_string}_task-{task}_run-01_beh.tsv'
-    beh_data = pd.read_csv(beh_source_file,sep='\t')
-    
+    beh_source_file = source_path / f'{sub_string}_task-{task}_run-01_beh.tsv'
+    beh_data = pd.read_csv(beh_source_file, sep='\t')
+    beh_data.drop(columns=cols_to_drop, inplace=True)
+    beh_data.rename(columns=cols_to_rename, inplace=True)
+
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
-    beh_data['resp'] = beh_data['resp'].fillna('n/a')
-    beh_data['rt'] = beh_data['rt'].replace(-99.0,'n/a')
+    beh_data['resp'].fillna('n/a', inplace=True)
+    beh_data['rt'].replace(-99.0,'n/a', inplace=True)
     
     # Convert accuracy to integer
     beh_data['correct'] = (beh_data['repeat'].isin([1]) & beh_data['resp'].isin(['n/a'])) | (beh_data['repeat'].isin([2]) & beh_data['resp'].isin(['j']))
     beh_data['correct'] = beh_data['correct'].astype(int)
     
     # Code # of resposnes
-    beh_data['n_responses'] = beh_data['response.keys'].replace('None','').str.len()
+    beh_data['n_responses'] = beh_data['response.keys'].replace('None', '').str.len()
     
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id
-    
-    # Rename and drop data columns
-    beh_data.rename(columns=cols_to_rename, inplace=True)
-    beh_data.drop(columns=cols_to_drop, inplace=True)
+
+    # Fil in some more values
+    beh_data.replace(['None', '', '--'], 'n/a', inplace=True)
     
     # Save behavioral data
-    beh_save_file = sub_beh_dir / f'sub-{bids_id}_task-{task}_beh.tsv'
+    bids_path.update(datatype='beh')
+    bids_path.directory.mkdir(parents=True, exist_ok=True)
+    beh_save_file = bids_path.directory / f'sub-{bids_id}_task-{task}_beh.tsv'
     beh_data.to_csv(beh_save_file, sep='\t', index=False)
     
-
     ### UPDATE *_EVENTS.TSV ###
     # Load *events.tsv
-    events_file = sub_eeg_dir / f'sub-{bids_id}_task-{task}_events.tsv'
-    events_data = pd.read_csv(events_file,sep='\t')
+    bids_path.update(datatype='eeg', suffix='events')
+    events_data = pd.read_csv(bids_path.fpath, sep='\t')
+
+    # Remove duplicat rows (mne-bids .5 bug) if needed
+    if events.shape[0]*2 == events_data.shape[0]:
+        events_data.drop(index=np.arange(1,events_data.shape[0]+1, step=2), 
+                        inplace=True).reset_index()
 
     # Add new columnas as "n/a" values
     events_data[cols_to_add] = 'n/a'
@@ -180,20 +181,27 @@ for sub in source_dir.glob('sub-*'):
             counter += 1
 
     # Overwrite *events.tsv
-    events_data.to_csv(events_file, sep='\t', index=False)
+    events_data.to_csv(bids_path.fpath, sep='\t', index=False)
 
     ### UPDATE *eeg_json
     # Load JSON
-    eeg_json_file = sub_eeg_dir / f'sub-{bids_id}_task-{task}_eeg.json'
-    with open(eeg_json_file,'r') as file:
+    bids_path.update(suffix='eeg', extension='json')
+    with open(bids_path.fpath, 'r') as file:
         eeg_json = json.load(file)
     
     # Update keys
     eeg_json['EEGReference'] = 'FCz'
     eeg_json['EEGGround'] = 'Fpz'
-    #eeg_json['PowerLineFrequency'] = 60
     
     # Save EEG JSON
-    with open(eeg_json_file,'w') as file:
+    with open(bids_path.fpath, 'w') as file:
         json.dump(eeg_json, file)
-   
+
+    ### Write Raw and Events to .fif.gz file
+    # Write Raw instance
+    raw_out_file = deriv_path.directory / (deriv_path.fpath.name + '_desc-import_raw.fif.gz')
+    raw.save(raw_out_file, overwrite=overwrite)
+
+    # Write events
+    events_out_file = deriv_path.directory / (deriv_path.fpath.name + '_desc-import_eve.txt')
+    mne.write_events(events_out_file, events)
