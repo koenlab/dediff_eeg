@@ -20,7 +20,7 @@ import mne
 from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
 
 #####---Overwrite BIDS---#####
-overwrite = False
+overwrite = True
 
 #####---Anonymize Dictionary---#####
 anonymize = {
@@ -139,6 +139,8 @@ for sub in source_dir.glob('sub-*'):
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
     beh_data['resp'].fillna('n/a', inplace=True)
     beh_data['rt'].replace(-99.0,'n/a', inplace=True)
+    beh_data['category'].replace('objects', 'object', inplace=True)
+    beh_data['category'].replace('scenes', 'scene', inplace=True)
     
     # Convert accuracy to integer
     beh_data['correct'] = (beh_data['repeat'].isin([1]) & beh_data['resp'].isin(['n/a'])) | (beh_data['repeat'].isin([2]) & beh_data['resp'].isin(['j']))
