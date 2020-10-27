@@ -1,7 +1,7 @@
 from pathlib import Path
 import platform
 
-
+### THESE ARE THINGS I CAN CHANGE AND UPDATE ###
 ### Define task name ###
 task = 'sof'
 
@@ -13,6 +13,16 @@ bad_chans = {
         }
 }
 
+### Dictionary of preprocessing options
+preprocess_options = {
+    'blink_thresh': 150,
+    'resample': 250, 
+    'lowcutoff': .5, 
+    'epoch_tmin': -2.0,
+    'epoch_tmax': 2.0
+}
+
+### BELOW IS RATHER FIXED ###
 #####---Determine Top Directory---#####
 # This is platform dependent and retrutns a Path class object
 # Get the server directory
@@ -50,13 +60,3 @@ event_dict = {
     'face/novel': 31,
     'face/1back': 32,
 }
-
-### Dictionary of preprocessing options
-preprocess_options = {
-    'resample': 250, 
-    'lowcutoff': .5, 
-    'epoch_tmin': -2.0,
-    'epoch_tmax': 2.0
-}
-
-
