@@ -45,8 +45,7 @@ bids_dir.mkdir(parents=True, exist_ok=True)
 
 ### Derivatives directory ###
 deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
-deriv_dir.mkdir(parents=True, exis
-
+deriv_dir.mkdir(parents=True, exist_ok=True)
 
 ### Define event dictionary ###
 event_dict = {
@@ -81,5 +80,5 @@ event_dict = {
     'top/odd/a5': 124,
     'top/odd/a6': 125,
     'top/odd/a7': 126,
-    'top/odd/a8': 127,
-    }
+    'top/odd/a8': 127
+}
