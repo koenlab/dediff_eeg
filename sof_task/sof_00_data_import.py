@@ -20,7 +20,7 @@ import mne
 from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
 
 #####---Overwrite BIDS---#####
-overwrite = True
+overwrite = False
 
 #####---Anonymize Dictionary---#####
 anonymize = {
@@ -76,7 +76,9 @@ for sub in source_dir.glob('sub-*'):
     print(f'  Derivative Path: {deriv_path}')
     
     # If EEG file alread writen skip this person
-    if  bids_path.directory.is_dir() and not overwrite:
+    exist_check = bids_path.copy().update(suffix='eeg', extension='vhdr')
+    if exist_check.fpath.is_file() and not overwrite:
+        print('SUBJECT BIDS DATA EXISTS: SKIPPING')
         continue
     
     ### WRITE EEG TO BIDS FORMAT ###
@@ -87,7 +89,7 @@ for sub in source_dir.glob('sub-*'):
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
 
-    # Update info of Raw
+    # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
     
     # Update event descriptions
