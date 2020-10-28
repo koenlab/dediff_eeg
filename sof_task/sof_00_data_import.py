@@ -141,6 +141,7 @@ for sub in source_dir.glob('sub-*'):
     beh_data['rt'].replace(-99.0,'n/a', inplace=True)
     beh_data['category'].replace('objects', 'object', inplace=True)
     beh_data['category'].replace('scenes', 'scene', inplace=True)
+    beh_data['category'].replace('faces', 'face', inplace=True)
     
     # Convert accuracy to integer
     beh_data['correct'] = (beh_data['repeat'].isin([1]) & beh_data['resp'].isin(['n/a'])) | (beh_data['repeat'].isin([2]) & beh_data['resp'].isin(['j']))
