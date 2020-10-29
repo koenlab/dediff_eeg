@@ -1,8 +1,14 @@
 """
-Script: 02_sof_preprocess_eeg.py
+Script: 02_sof_ICA_estimation.py
 Creator: Joshua D. Koen
-Description: This script imports data from sourcedata to bids format for 
-the SOF (scene, object, face) task. 
+Description: This script handles ICA estimation for the SOF task. 
+Events are adjust with Photosensor and data/events resampled (written to file)
+Blinks at stimulus onset are flagged. 
+AutoReject is used to highlight potentially problematic epochs. 
+Epochs are visually inspected. 
+FastICA is used to estimate ICs
+EOG ICs are flagged using the ica.find_bad_eogs() method (corelation)
+ICs are then manually flagged. 
 """
 
 #####---Import Libraries---#####
@@ -13,12 +19,11 @@ import json
 
 from mne.io import read_raw_fif
 from mne import events_from_annotations
-from mne.preprocessing import (create_eog_epochs, ICA)
-from mne.time_frequency import tfr_morlet, psd_multitaper, psd_welch
+from mne.preprocessing import ICA
+from mne.time_frequency import psd_welch
 import mne
 
 from autoreject import (AutoReject, get_rejection_threshold)
-
 
 from sof_config import bids_dir, deriv_dir, event_dict, task, preprocess_options
 
@@ -31,7 +36,7 @@ print(sub_list)
 
 for sub in sub_list:
 
-    ### SUBJECT INFORMATION DEFINITION ###
+    ### STEP 0: SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
     sub_string = f'sub-{sub}'
     bids_path = bids_dir / sub_string
@@ -40,7 +45,6 @@ for sub in sub_list:
     print(f'Preprocessing task-{task} data for {sub_string}')
     print(f'  BIDS Folder: {bids_path}')
     print(f'  Derivatives Folder: {deriv_path}')
-    # Define some sobject directories
     
     ### STEP 1: LOAD DATA AND UPDATE EVENTS
     # Load Raw EEG data from derivatives folder
@@ -81,39 +85,31 @@ for sub in sub_list:
     event_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_eve.txt'
     mne.write_events(event_file, events)
     
-    ### Step 2: Load Metadata for event epochs creation
-    ## Update metadata file (events.tsv)
-    events_bids_file = bids_path / 'eeg' / f'{sub_string}_task-{task}_events.tsv'
-    metadata = pd.read_csv(events_bids_file, sep='\t')
-    metadata = metadata[metadata['trial_type'] != 'boundary']
-    metadata.sample = events[:,0]
-    metadata.onset = metadata.sample / raw.info['sfreq']
-    metadata_file = deriv_path / f'{sub_string}_task-{task}_metadata.tsv'
-    metadata.to_csv(metadata_file, sep='\t')
-    
-    ### Step 3: Estimate ICA
-    # Apply 1Hz HPF
-    ica_raw = raw.copy().filter( 1, None, skip_by_annotation=['boundary'])
-    ica_raw.notch_filter([60,120], picks=['eog'])
+    ### Step 2: Estimate ICA
+    # Apply HPF to all channels and a 60Hz Notch filter to eogs
+    raw.filter(preprocess_options['ica_lowcutoff'], None, 
+               skip_by_annotation=['boundary'])
+    raw.notch_filter([60,120], picks=['eog'])
     
     # Make ICA Epochs
-    ica_epochs = mne.Epochs(ica_raw, events, event_id=event_id, 
-                            tmin=-1.0, tmax=1.0, baseline=(None,None),
-                            reject=None, preload=True)
+    epochs = mne.Epochs(raw, events, event_id=event_id, 
+                        tmin=preprocess_options['ica_tmin'], 
+                        tmax=preprocess_options['ica_tmax'], 
+                        baseline=(None,None), reject=None, preload=True)
     
     # Detect eog at stim onsets
     print('Finding blinks at onsets..')
-    veog_data = ica_epochs.copy().crop(tmin=-1.5, tmax=1.5).pick_channels(['VEOG']).get_data()
+    veog_data = epochs.copy().crop(tmin=-.15, tmax=.15).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs to drop:', blink_inds)
     
     # Drop peak-to-peak only on EEG channels
     ar = AutoReject(n_jobs=4, verbose='tqdm')
-    _, drop_log = ar.fit(ica_epochs, ).transform(ica_epochs, return_log=True)
+    _, drop_log = ar.fit(epochs).transform(epochs, return_log=True)
     
     # Make color index
-    epoch_colors = ['grey' for x in range(events.shape[0])]
+    epoch_colors = [None for x in range(events.shape[0])]
     for blink in blink_inds:
         epoch_colors[blink] = 'blue'
     for i, ep in enumerate(drop_log.bad_epochs):
@@ -121,20 +117,23 @@ for sub in sub_list:
             epoch_colors[i] = 'blue'
     colors = []
     for col in epoch_colors:
-        colors.append([col]*len(ica_epochs.info['ch_names']))
+        colors.append([col]*len(epochs.info['ch_names']))
     
     # Visual inspect
-    ica_epochs.plot(n_channels=65, n_epochs=5, block=False,
-                    scalings=dict(eeg=150e-6, eog=250e-6), 
+    epochs.plot(n_channels=65, n_epochs=5, block=True,
+                    scalings=dict(eeg=150e-6, eog=300e-6), 
                     epoch_colors=colors, picks='all')
     
     # Save ICA epochs
-    ica_epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_epo.fif.gz'
-    ica_epochs.save(ica_epochs_fif_file, overwrite=True)
+    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_epo.fif.gz'
+    epochs.save(epochs_fif_file, overwrite=True)
     
     # Estimate ICA
-    ica = ICA(method='fastica', max_iter=1000, random_state=97)
-    ica.fit(ica_epochs)
+    #ica = ICA(method='fastica', max_iter=1000, random_state=97)
+    ica = ICA(method='picard', max_iter=1000, random_state=97, 
+              fit_params=dict(ortho=True, extended=True), 
+              verbose=True)
+    ica.fit(epochs)
     
     # Save ICA
     ica_file = deriv_path / f'{sub_string}_task-{task}_ica.fif.gz'
@@ -149,90 +148,15 @@ for sub in sub_list:
     plt.close(eog_ica_plot)
     
     # Plot all component properties
-    ica.plot_components(inst=ica_epochs, reject=None,
+    ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
     ica.save(ica_file)
     
     # Manually inspect 
     for ic in ica.exclude:
-        ica.plot_properties(ica_epochs, picks=ic, show=False,
-                           psd_args=dict(fmax=75))
+        ica.plot_properties(epochs, picks=ic, show=False,
+                           psd_args=dict(fmax=70))
         ic_file = fig_path / f'{sub_string}_task-{task}_ic{ic:02}_properties.png'
         plt.savefig(ic_file, dpi=600)
         plt.close('all')
     
-    
-    ### Main Preprocessing path
-    raw.filter( 0.05, None)
-    raw.notch_filter([60, 120], picks=['eog'])
-    
-    # Add an empty channel
-    epochs = mne.Epochs(raw, events, event_id=event_id, 
-                            tmin=-2.0, tmax=2.0, baseline=(None,None),
-                            reject=None, metadata=metadata, preload=True)
-    ica.apply(epochs)
-    mne.add_reference_channels(epochs, 'FCz', copy=False)
-    epochs.set_eeg_reference()
-    epochs.apply_baseline((-.2,0))
-    epochs.set_montage('standard_1005')
-    
-    ar = AutoReject(n_interpolate=np.array([1,4,32]), 
-                    consensus=np.linspace(0,1.0,num=11),
-                    thresh_method='bayesian_optimization', 
-                    n_jobs=4, random_state=42, verbose=False)
-    ar.fit(epochs)
-    
-    epochs.interpolate_bads()
-    
-    
-    epochs_ar, reject_log = ar.transform(epochs, return_log=True)
-    ar.save( deriv_path / f'{sub_string}_task-{task}_autoreject.hd5')
-    
-    epochs.drop(reject_log.bad_epochs, reason='Autoreject')
-    epochs.drop(blink_at_onsets, reason='OnsetBlink')
-    epochs.plot(n_channels=65, n_epochs=5, block=True, 
-                scalings=dict(eeg=100e-6, eog=250e-6), picks='all')
-    
-    # Save cleaned epochs
-    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_epo.fif.gz'
-    epochs.save(epochs_fif_file, overwrite=True)
-    events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv'
-    epochs.metadata.to_csv(events_save_file, sep='\t')
-    
-    # Make faces evoked 
-    face_query = "category == 'faces' and repeat==1 and n_responses==0"
-    faces = epochs[face_query].crop(-.2,.5).average()
-    faces_file = deriv_path / f'{sub_string}_task-{task}_cond-faces_filt-none_ave.fif.gz'
-    faces.save(faces_file)
-    
-    # Make scenes evoked
-    scene_query = "category == 'scenes' and repeat==1 and n_responses==0"
-    scenes = epochs[scene_query].crop(-.2,.5).average()
-    scenes_file = deriv_path / f'{sub_string}_task-{task}_cond-scenes_filt-none_ave.fif.gz'
-    scenes.save(scenes_file)
-    
-    # Make objects evoked
-    object_query = "category == 'objects' and repeat==1 and n_responses==0"
-    objects = epochs[scene_query].crop(-.2,.5).average()
-    objects_file = deriv_path / f'{sub_string}_task-{task}_cond-objects_filt-none_ave.fif.gz'
-    objects.save(objects_file)
-    
-    # # power 
-    # freqs = np.arange(start=3, stop=50)
-    # cycles = 7
-    # power = tfr_morlet(epochs, freqs, 5, average=False, return_itc=False)
-    
-    # power.plot_topomap(ch_type='eeg', tmin=0.5, tmax=1, fmin=8, fmax=12,
-    #                baseline=(-0.3, -.15), mode='logratio',
-    #                title='Beta', show=True)
-    # power.apply_baseline(baseline=(-.3,-.15), mode='logratio')
-    # face_tfr = power['face/novel'].average()
-    # object_tfr = power['object/novel'].average()
-    # scene_tfr = power['scene/novel'].average()
-    
-    # face_diff_tfr = mne.combine_evoked([face_tfr, object_tfr], weights=[1,-1])
-    # face_diff_tfr.plot_topomap(tmin=0.5, tmax=1, fmin=8, fmax=12,
-    #                title='Beta', show=True)
-    # scene_diff_tfr = mne.combine_evoked([scene_tfr, object_tfr], weights=[1,-1])
-    # scene_diff_tfr.plot_topomap(tmin=0.5, tmax=1, fmin=8, fmax=12,
-    #                title='Beta', show=True)
