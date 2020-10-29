@@ -9,22 +9,23 @@ the SOF (scene, object, face) task.
 import numpy as np
 import pandas as pd
 import json
+from random import (random, randrange)
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
 from mne_bids import BIDSPath, write_raw_bids
-from mne_bids.copyfiles import copyfile_brainvision
 
 import mne
 
 from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
 
 #####---Overwrite BIDS---#####
-overwrite = True
+overwrite = False
 
 #####---Anonymize Dictionary---#####
+# Update to make random days back +/- 120 days
 anonymize = {
-    'daysback': 365.1275*100
+    'daysback': (365*randrange(100,120)) + (randrange(-120,120) + random())
 }
 
 #####---Event Dictionaries for renaming and output---#####
@@ -88,6 +89,7 @@ for sub in source_dir.glob('sub-*'):
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
+    raw.anonymize(daysback=anonymize['daysback'])
 
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
@@ -148,7 +150,7 @@ for sub in source_dir.glob('sub-*'):
     beh_data['correct'] = beh_data['correct'].astype(int)
     
     # Code # of resposnes
-    beh_data['n_responses'] = beh_data['response.keys'].replace('None', '').str.len()
+    beh_data['n_responses'] = beh_data['response.keys'].replace(['None', ','], '').str.len()
     
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id
