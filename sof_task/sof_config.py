@@ -15,7 +15,7 @@ bad_chans = {
 
 ### Dictionary of preprocessing options
 preprocess_options = {
-    'blink_thresh': 150,
+    'blink_thresh': 150e-6,
     'resample': 250, 
     'lowcutoff': .05, 
     'tmin': -2.0,
