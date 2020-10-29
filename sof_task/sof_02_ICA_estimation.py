@@ -136,7 +136,7 @@ for sub in sub_list:
     ica.fit(epochs)
     
     # Save ICA
-    ica_file = deriv_path / f'{sub_string}_task-{task}_ica.fif.gz'
+    ica_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_ica.fif.gz'
     ica.save(ica_file)
     
     # Find EOG artifacts
