@@ -23,8 +23,9 @@ from study_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_
 overwrite = True
 
 #####---Anonymize Dictionary---#####
+# Update to make random days back +/- 120 days
 anonymize = {
-    'daysback': 365.1275*100
+    'daysback': (365*randrange(100,120)) + (randrange(-120,120) + random())
 }
 
 #####---Event Dictionaries for renaming and output---#####
