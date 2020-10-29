@@ -17,9 +17,14 @@ bad_chans = {
 preprocess_options = {
     'blink_thresh': 150,
     'resample': 250, 
-    'lowcutoff': .5, 
-    'epoch_tmin': -2.0,
-    'epoch_tmax': 2.0
+    'lowcutoff': .05, 
+    'tmin': -2.0,
+    'tmax': 2.0,
+    'baseline': (-.2, 0),
+    'ica_lowcutoff': 1,
+    'ica_tmin': -1.0, 
+    'ica_tmax': 1.0,
+    'ica_baseline': (None, None)
 }
 
 ### BELOW IS RATHER FIXED ###
