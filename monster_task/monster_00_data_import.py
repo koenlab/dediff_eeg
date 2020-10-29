@@ -9,6 +9,7 @@ the Monster task.
 import numpy as np
 import pandas as pd
 import json
+from random import (random, randrange)
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
@@ -21,12 +22,6 @@ from monster_config import bids_dir, source_dir, deriv_dir, event_dict, task, ba
 
 #####---Overwrite BIDS---#####
 overwrite = True
-
-#####---Anonymize Dictionary---#####
-# Update to make random days back +/- 120 days
-anonymize = {
-    'daysback': (365*randrange(100,120)) + (randrange(-120,120) + random())
-}
 
 #####---Event Dictionary to Keep---#####
 rename_dict = {
@@ -111,13 +106,19 @@ for sub in source_dir.glob('sub-*'):
     # Define the source data file 
     source_vhdr = source_path / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
 
+    ## Anonymize Dictionary
+    anonymize = {
+        'daysback': (365*randrange(100,110)) + (randrange(-120,120) + random())
+    }
+
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
-    
+    raw.anonymize(daysback=anonymize['daysback'])
+
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
-
+    
     # Update event descriptions
     description = raw.annotations.description
     for old_name, new_name in rename_dict.items():
@@ -133,9 +134,8 @@ for sub in source_dir.glob('sub-*'):
         
     # Write BIDS Output
     write_raw_bids(raw, bids_path=bids_path, event_id=event_id, 
-                   events_data=events, anonymize=anonymize,
-                   overwrite=True, verbose=False)
-    
+                   events_data=events, overwrite=True, verbose=False)
+
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
     bids_path.update(suffix='channels', extension='.tsv')

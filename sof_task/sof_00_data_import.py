@@ -20,13 +20,7 @@ import mne
 from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
 
 #####---Overwrite BIDS---#####
-overwrite = False
-
-#####---Anonymize Dictionary---#####
-# Update to make random days back +/- 120 days
-anonymize = {
-    'daysback': (365*randrange(100,120)) + (randrange(-120,120) + random())
-}
+overwrite = True
 
 #####---Event Dictionaries for renaming and output---#####
 # Rename dictionary
@@ -86,6 +80,11 @@ for sub in source_dir.glob('sub-*'):
     # Define the source data file 
     source_vhdr = source_path / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
 
+    # Anonymize Dictionary
+    anonymize = {
+        'daysback': (365*randrange(100,110)) + (randrange(-120,120) + random())
+    }
+
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG','HEOG'])
@@ -109,8 +108,7 @@ for sub in source_dir.glob('sub-*'):
         
     # Write BIDS Output
     write_raw_bids(raw, bids_path=bids_path, event_id=event_id, 
-                   events_data=events, anonymize=anonymize,
-                   overwrite=True, verbose=False)
+                   events_data=events, overwrite=True, verbose=False)
 
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
