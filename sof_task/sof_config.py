@@ -1,5 +1,6 @@
 from pathlib import Path
 import platform
+from mne.channels import read_custom_montage
 
 ### THESE ARE THINGS I CAN CHANGE AND UPDATE ###
 ### Define task name ###
@@ -55,6 +56,10 @@ bids_dir.mkdir(parents=True, exist_ok=True)
 ### Derivatives directory ###
 deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
 deriv_dir.mkdir(parents=True, exist_ok=True)
+
+### BVEF File
+bvef_file = data_dir / 'scripts' / 'brainvision_64.bvef'
+bv_montage = read_custom_montage(bvef_file, head_size=.08)
 
 ### Define event dictionary ###
 event_dict = {
