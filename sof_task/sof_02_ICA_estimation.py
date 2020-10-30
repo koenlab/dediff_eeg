@@ -107,7 +107,7 @@ for sub in sub_list:
     
     # Drop peak-to-peak only on EEG channels
     ar = AutoReject(n_jobs=4, verbose='tqdm')
-    _, drop_log = ar.fit(epochs).transform(epochs, return_log=True)
+    epochs_ar, drop_log = ar.fit(epochs).transform(epochs, return_log=True)
     
     # Make color index
     epoch_colors = [None for x in range(events.shape[0])]
