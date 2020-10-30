@@ -25,7 +25,8 @@ import mne
 
 from autoreject import (AutoReject, get_rejection_threshold)
 
-from sof_config import bids_dir, deriv_dir, event_dict, task, preprocess_options
+from sof_config import (bids_dir, deriv_dir, event_dict, 
+                        task, preprocess_options, bv_montage)
 
 # Ask for subject IDs to analyze
 print('What IDs are being preprocessed?')
@@ -96,13 +97,13 @@ for sub in sub_list:
                         tmin=preprocess_options['ica_tmin'], 
                         tmax=preprocess_options['ica_tmax'], 
                         baseline=(None,None), reject=None, preload=True)
-    
+    epochs.set_montage(bv_montage)
+
     # Detect eog at stim onsets
-    print('Finding blinks at onsets..')
     veog_data = epochs.copy().crop(tmin=-.15, tmax=.15).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
-    print('Epochs to drop:', blink_inds)
+    print('Epochs with blink at stim onset:', blink_inds)
     
     # Drop peak-to-peak only on EEG channels
     ar = AutoReject(n_jobs=4, verbose='tqdm')
@@ -152,11 +153,11 @@ for sub in sub_list:
                         psd_args=dict(fmax=70))
     ica.save(ica_file)
     
-    # Manually inspect 
-    for ic in ica.exclude:
-        ica.plot_properties(epochs, picks=ic, show=False,
-                           psd_args=dict(fmax=70))
-        ic_file = fig_path / f'{sub_string}_task-{task}_ic{ic:02}_properties.png'
-        plt.savefig(ic_file, dpi=600)
-        plt.close('all')
+    # # Manually inspect 
+    # for ic in ica.exclude:
+    #     ica.plot_properties(epochs, picks=ic, show=False,
+    #                        psd_args=dict(fmax=70))
+    #     ic_file = fig_path / f'{sub_string}_task-{task}_ic{ic:02}_properties.png'
+    #     plt.savefig(ic_file, dpi=600)
+    #     plt.close('all')
     
