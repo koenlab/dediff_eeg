@@ -57,7 +57,7 @@ for sub in bids_dir.glob('sub-*'):
     ax1.axis('off')
     
     # Compute proportions (accuracy) and plot it
-    proportions = beh_data.groupby(group_by[0:2])['correct'].mean().unstack('gabor_loc')
+    proportions = beh_data.query('n_resp==1').groupby(group_by[0:2])['correct'].mean().unstack('gabor_loc')
     
     # Plot accuracy
     ax2 = plt.subplot(2,2,3)
@@ -69,17 +69,11 @@ for sub in bids_dir.glob('sub-*'):
     ax2.set_ylabel('p(Correct)', fontsize=16)
     ax2.set_xlabel('Trial Type', fontsize=16)
     
-    # # Get Colors
-    # colors = []
-    # colors.append(ax2.get_children()[0].get_facecolor())
-    # colors.append(ax2.get_children()[2].get_facecolor())
-    # colors.append(ax2.get_children()[4].get_facecolor())
-    
     ## MEDIAN RT MEASURES
     # Compute RT measures
-    median_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].median().to_frame()
-    mean_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].mean().to_frame()
-    sd_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].std().to_frame()
+    median_rts = beh_data.query('correct==1 and n_resp==1').groupby(group_by[0:2])['rt'].median().to_frame()
+    mean_rts = beh_data.query('correct==1 and n_resp==1').groupby(group_by[0:2])['rt'].mean().to_frame()
+    sd_rts = beh_data.query('correct==1 and n_resp==1').groupby(group_by[0:2])['rt'].std().to_frame()
     
     # Plot median RT
     ax3 = plt.subplot(2,2,4)
