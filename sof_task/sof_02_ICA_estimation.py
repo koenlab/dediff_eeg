@@ -23,8 +23,6 @@ from mne.preprocessing import ICA
 from mne.time_frequency import psd_welch
 import mne
 
-from autoreject import (AutoReject, get_rejection_threshold)
-
 from sof_config import (bids_dir, deriv_dir, event_dict, 
                         task, preprocess_options, bv_montage)
 
@@ -105,25 +103,18 @@ for sub in sub_list:
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs with blink at stim onset:', blink_inds)
     
-    # Drop peak-to-peak only on EEG channels
-    ar = AutoReject(n_jobs=4, verbose='tqdm')
-    epochs_ar, drop_log = ar.fit(epochs).transform(epochs, return_log=True)
-    
     # Make color index
-    epoch_colors = [None for x in range(events.shape[0])]
-    for blink in blink_inds:
-        epoch_colors[blink] = 'blue'
-    for i, ep in enumerate(drop_log.bad_epochs):
-        if ep:
-            epoch_colors[i] = 'blue'
-    colors = []
-    for col in epoch_colors:
-        colors.append([col]*len(epochs.info['ch_names']))
-    
+    n_channels = len(raw.info.ch_names)    
+    epoch_colors = list()
+    for i in np.arange(epochs.events.shape[0]):
+        epoch_colors.append([None]*n_channels)
+        if i in blink_inds:
+            epoch_colors[i] = ['b'] * n_channels
+            
     # Visual inspect
-    epochs.plot(n_channels=65, n_epochs=5, block=True,
+    epochs.plot(n_channels=66, n_epochs=5, block=True,
                     scalings=dict(eeg=150e-6, eog=300e-6), 
-                    epoch_colors=colors, picks='all')
+                    epoch_colors=epoch_colors, picks='all')
     
     # Save ICA epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_epo.fif.gz'
@@ -152,12 +143,5 @@ for sub in sub_list:
     ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
     ica.save(ica_file)
-    
-    # # Manually inspect 
-    # for ic in ica.exclude:
-    #     ica.plot_properties(epochs, picks=ic, show=False,
-    #                        psd_args=dict(fmax=70))
-    #     ic_file = fig_path / f'{sub_string}_task-{task}_ic{ic:02}_properties.png'
-    #     plt.savefig(ic_file, dpi=600)
-    #     plt.close('all')
+
     

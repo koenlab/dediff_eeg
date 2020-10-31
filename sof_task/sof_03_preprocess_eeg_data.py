@@ -16,8 +16,7 @@ from mne.preprocessing import read_ica
 from mne.time_frequency import tfr_morlet, psd_welch
 import mne
 
-from autoreject import (AutoReject, get_rejection_threshold)
-
+from autoreject import get_rejection_threshold
 
 from sof_config import (bids_dir, deriv_dir, task, preprocess_options, bv_montage)
 from sof_config import event_dict as event_id
@@ -76,15 +75,15 @@ for sub in sub_list:
                         tmax=preprocess_options['tmax'], 
                         metadata=metadata, baseline=(None,None), 
                         reject=None, preload=True)
-    epochs.set_montage(bv_montage)
     
     # Apply ICA (in place)
     ica.apply(epochs)
     
-    # Interpolate channels if needed, and set new montage to standard_1005
-    epochs.interpolate_bads()
+    # Interpolate channels if needed, and set new montage to bv_montage
+    if len(epochs.info['bads'])>0:
+        epochs.interpolate_bads()
     mne.add_reference_channels(epochs, 'FCz', copy=False)
-    epochs.set_montage(bv_montage)
+    epochs.set_montage(bv_montage, on_missing='ignore')
     
     # Add FCz and reference to average and set montage to standard_1005
     epochs.set_eeg_reference(ref_channels='average')
@@ -93,32 +92,31 @@ for sub in sub_list:
     epochs.apply_baseline((-.2,0))
 
     ### Step 4: Artifact Rejection
+    # Drop peak-to-peak only on EEG channels
+    # reject = {'eeg': 150e-6}
+    reject = get_rejection_threshold(epochs, ch_types='eeg')
+    print(reject)
+    epochs.drop_bad(reject=reject)
+    
     #Find blinks at onset
-    veog_data = epochs.copy().crop(tmin=-.15, tmax=.15).pick_channels(['VEOG']).get_data()
+    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs with blink at stim onset:', blink_inds)
-
-    # Drop peak-to-peak only on EEG channels
-    ar = AutoReject(n_jobs=4, verbose='tqdm')
-    _, drop_log = ar.fit(epochs).transform(epochs, return_log=True)
     
     # Make color index
-    epoch_colors = [None for x in range(events.shape[0])]
-    for blink in blink_inds:
-        epoch_colors[blink] = 'blue'
-    for i, ep in enumerate(drop_log.bad_epochs):
-        if ep:
-            epoch_colors[i] = 'blue'
-    colors = []
-    for col in epoch_colors:
-        colors.append([col]*len(epochs.info['ch_names']))
+    n_channels = len(epochs.info.ch_names)    
+    epoch_colors = list()
+    for i in np.arange(epochs.events.shape[0]):
+        epoch_colors.append([None]*n_channels)
+        if i in blink_inds:
+            epoch_colors[i] = ['b'] * n_channels
     
     # Visual inspect
-    epochs.plot(n_channels=65, n_epochs=5, block=True,
-                scalings=dict(eeg=100e-6, eog=250e-6), 
-                epoch_colors=colors, picks='all')
-
+    epochs.plot(n_channels=66, n_epochs=5, block=True,
+                scalings=dict(eeg=125e-6, eog=300e-6), 
+                epoch_colors=epoch_colors, picks='all')
+    
     # Save cleaned epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     epochs.save(epochs_fif_file, overwrite=True)
