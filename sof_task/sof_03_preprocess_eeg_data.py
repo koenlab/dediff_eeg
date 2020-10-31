@@ -16,9 +16,10 @@ from mne.preprocessing import read_ica
 from mne.time_frequency import tfr_morlet, psd_welch
 import mne
 
-from autoreject import get_rejection_threshold
+from autoreject import  (AutoReject, get_rejection_threshold)
 
-from sof_config import (bids_dir, deriv_dir, task, preprocess_options, bv_montage)
+from sof_config import (bids_dir, deriv_dir, task, preprocess_options, 
+                        bv_montage, n_interpolates, consensus)
 from sof_config import event_dict as event_id
 
 # Ask for subject IDs to analyze
@@ -82,6 +83,8 @@ for sub in sub_list:
     # Interpolate channels if needed, and set new montage to bv_montage
     if len(epochs.info['bads'])>0:
         epochs.interpolate_bads()
+    else:
+        print('No channels were interpolated')
     mne.add_reference_channels(epochs, 'FCz', copy=False)
     epochs.set_montage(bv_montage, on_missing='ignore')
     
@@ -92,11 +95,17 @@ for sub in sub_list:
     epochs.apply_baseline((-.2,0))
 
     ### Step 4: Artifact Rejection
+    # Run autoreject
+    ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
+                    random_state=42, verbose='tqdm', n_jobs=8)
+    ar.fit(epochs)
+    epochs_ar, reject_log = ar.transform(epochs, return_log=True)
+    
     # Drop peak-to-peak only on EEG channels
     # reject = {'eeg': 150e-6}
-    reject = get_rejection_threshold(epochs, ch_types='eeg')
-    print(reject)
-    epochs.drop_bad(reject=reject)
+    # reject = get_rejection_threshold(epochs, ch_types='eeg')
+    # print(reject)
+    # epochs.drop_bad(reject=reject)
     
     #Find blinks at onset
     veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
@@ -108,12 +117,14 @@ for sub in sub_list:
     n_channels = len(epochs.info.ch_names)    
     epoch_colors = list()
     for i in np.arange(epochs.events.shape[0]):
-        epoch_colors.append([None]*n_channels)
+        epoch_colors.append([None]*(n_channels-1) + ['k'])
         if i in blink_inds:
             epoch_colors[i] = ['b'] * n_channels
+        if reject_log.bad_epochs[i]:
+            epoch_colors[i] = ['m'] * n_channels
     
     # Visual inspect
-    epochs.plot(n_channels=66, n_epochs=5, block=True,
+    epochs.plot(n_channels=66, n_epochs=5, block=False,
                 scalings=dict(eeg=125e-6, eog=300e-6), 
                 epoch_colors=epoch_colors, picks='all')
     
@@ -122,3 +133,15 @@ for sub in sub_list:
     epochs.save(epochs_fif_file, overwrite=True)
     events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv'
     epochs.metadata.to_csv(events_save_file, sep='\t')
+    
+    # remove blinks from epochs_ar then save (fully auto)
+    veog_data = epochs_ar.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
+    veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
+    blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
+    epochs_ar.drop(blink_inds)
+    epochs_ar_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-autoreject_epo.fif.gz'
+    epochs_ar.save(epochs_ar_fif_file, overwrite=True)
+    events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-autoreject_metadata.tsv'
+    epochs_ar.metadata.to_csv(events_save_file, sep='\t')
+    
+    

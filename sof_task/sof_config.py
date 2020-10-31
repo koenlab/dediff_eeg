@@ -1,5 +1,6 @@
 from pathlib import Path
 import platform
+import numpy as np
 from mne.channels import read_custom_montage
 
 ### THESE ARE THINGS I CAN CHANGE AND UPDATE ###
@@ -14,13 +15,17 @@ bad_chans = {
         }
 }
 
+### Autoreject parameters
+n_interpolates = np.array([1, 2, 4])
+consensus = np.linspace(0.5, 1.0, 6)
+
 ### Dictionary of preprocessing options
 preprocess_options = {
     'blink_thresh': 150e-6,
     'resample': 250, 
     'lowcutoff': .1, 
-    'tmin': -1.5,
-    'tmax': 1.5,
+    'tmin': -1.7,
+    'tmax': 1.7,
     'baseline': (-.2, 0),
     'ica_lowcutoff': 1,
     'ica_tmin': -1.0, 

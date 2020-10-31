@@ -23,8 +23,11 @@ from mne.preprocessing import ICA
 from mne.time_frequency import psd_welch
 import mne
 
+from autoreject import (AutoReject, Ransac, get_rejection_threshold)
+
 from sof_config import (bids_dir, deriv_dir, event_dict, 
-                        task, preprocess_options, bv_montage)
+                        task, preprocess_options, bv_montage,
+                        n_interpolates, consensus)
 
 # Ask for subject IDs to analyze
 print('What IDs are being preprocessed?')
@@ -78,9 +81,7 @@ for sub in sub_list:
     ## Resample events and raw to 250Hz (yes this causes jitter, but it will be minimal)
     raw, events = raw.resample( preprocess_options['resample'], events=events )
     
-    # Save resample events and raw
-    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_raw.fif.gz'
-    raw.save(raw_fif_file, overwrite=True)
+    # Save events resampled
     event_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_eve.txt'
     mne.write_events(event_file, events)
     
@@ -96,9 +97,22 @@ for sub in sub_list:
                         tmax=preprocess_options['ica_tmax'], 
                         baseline=(None,None), reject=None, preload=True)
     epochs.set_montage(bv_montage)
-
+    
+    # Autodetect bad channels
+    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.75)
+    ransac.fit(epochs)
+    if len(ransac.bad_chs_):
+        for chan in ransac.bad_chs_:
+            epochs.info['bads'].extend(chan)
+    
+    # Run autoreject
+    ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
+                    random_state=42, verbose='tqdm', n_jobs=4)
+    ar.fit(epochs)
+    reject_log = ar.get_reject_log(epochs)
+    
     # Detect eog at stim onsets
-    veog_data = epochs.copy().crop(tmin=-.15, tmax=.15).pick_channels(['VEOG']).get_data()
+    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs with blink at stim onset:', blink_inds)
@@ -107,10 +121,12 @@ for sub in sub_list:
     n_channels = len(raw.info.ch_names)    
     epoch_colors = list()
     for i in np.arange(epochs.events.shape[0]):
-        epoch_colors.append([None]*n_channels)
+        epoch_colors.append([None]*(n_channels-1) + ['k'])
         if i in blink_inds:
             epoch_colors[i] = ['b'] * n_channels
-            
+        if reject_log.bad_epochs[i]:
+            epoch_colors[i] = ['m'] * n_channels
+    
     # Visual inspect
     epochs.plot(n_channels=66, n_epochs=5, block=True,
                     scalings=dict(eeg=150e-6, eog=300e-6), 
@@ -143,5 +159,11 @@ for sub in sub_list:
     ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
     ica.save(ica_file)
+    
+    # Save raw with bads attached
+    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_raw.fif.gz'
+    raw.info['bads'] = epochs.info['bads']
+    raw.save(raw_fif_file, overwrite=True)
+    
 
     
