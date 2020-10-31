@@ -76,7 +76,8 @@ cols_to_rename = {
 }
 
 # List of columns to add to *events.tsv from behavioral data
-cols_to_add = ['angle_bin', 'abin_label', 'correct', 'correct_resp', 'gabor_loc', 
+cols_to_add = ['angle_bin', 'abin_label', 'letter_type', 
+               'correct', 'correct_resp', 'gabor_loc', 
                'phase', 'resp', 'rt', 'this_angle']
 
 #####---Get Subject List---#####
