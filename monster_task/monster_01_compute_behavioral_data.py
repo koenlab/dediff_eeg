@@ -1,8 +1,8 @@
 """
-Script: sof_01_compute_behavioral_data.py
+Script: monster_01_compute_behavioral_data.py
 Creator: Joshua D. Koen
-Description: This script analyzes the behavioral data for the scene,
-object, face (sof) task
+Description: This script analyzes the behavioral data for the
+MONSTER task. 
 """
 
 ### Import needed libraries
@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
-from sof_config import bids_dir, deriv_dir, task
+from monster_config import bids_dir, deriv_dir, task
 
 ### Overwrite 
 overwrite = True
@@ -31,9 +31,6 @@ for sub in bids_dir.glob('sub-*'):
     fig.set_size_inches([11,7])
     fig.suptitle(sub_string, fontsize=18)
     
-    # Create a list for ease of use later
-    groups = ['category','repeat']
-    
     ## Load the behavioral data file
     beh_file = bids_dir / sub_string / 'beh' / f'{sub_string}_task-{task}_beh.tsv'
     beh_data = pd.read_csv(beh_file, sep='\t')
@@ -45,62 +42,52 @@ for sub in bids_dir.glob('sub-*'):
     
     ### Trial Counts
     # Calculate trial counts 
-    counts = beh_data.groupby(groups)['correct'].value_counts().unstack(groups)
+    group_by = ['gabor_loc', 'letter_type', 'abin_label']
+    counts = beh_data.groupby(group_by)['correct'].value_counts()
+    counts = counts.unstack('abin_label')
     counts.fillna('0', inplace=True)
     
     # Make the table for trial counts
-    colLabels = [f'{x[0]} Rep{x[1]}' for x in counts.columns.to_flat_index()]
-    colLabels = [x.replace('Rep1','novel') for x in colLabels]
-    colLabels = [x.replace('Rep2','1back') for x in colLabels]
+    colLabels = [f'{x}' for x in counts.columns.to_flat_index()]
     ax1 = plt.subplot(2,1,1)
     ax1.set_title('Trial Counts',fontsize=18, fontweight='bold')
-    rowLabels = ['Incorrect', 'Correct']
-    if counts.shape[0] == 1 and counts.index[0] == 1:
-        rowLabels = ['Correct']
-    
+    rowLabels = [f'{x[0][0:3]}-{x[1][0:3]}-{x[2]}' for x in counts.index.to_flat_index()]
     ax1.table(cellText=counts.values, colLabels=colLabels, rowLabels=rowLabels,
              loc='upper center')
     ax1.axis('off')
     
     # Compute proportions (accuracy) and plot it
-    proportions = beh_data.groupby(groups)['correct'].mean().unstack(['category'])
+    proportions = beh_data.groupby(group_by[0:2])['correct'].mean().unstack('gabor_loc')
     
     # Plot accuracy
     ax2 = plt.subplot(2,2,3)
     proportions.plot(kind='bar', ax=ax2)
-    ax2.legend(loc='upper center', mode='expand', ncol=3, bbox_to_anchor=(.7,1,.7,.12),
-              frameon=False)
+    ax2.legend(loc='upper center', mode='expand', ncol=3, bbox_to_anchor=(.7,1.1,.7,.12),
+              frameon=False, title='Gabor Location')
     ax2.tick_params(axis='x', rotation=0)
-    ax2.set_title('Accuracy', y=1.15, fontsize=18, fontweight='bold')
-    ax2.set_ylabel('p(Correct)')
-    ax2.set_xticklabels(['novel', '1back'])
+    ax2.set_title('Accuracy', y=1.2, fontsize=18, fontweight='bold')
+    ax2.set_ylabel('p(Correct)', fontsize=16)
+    ax2.set_xlabel('Trial Type', fontsize=16)
     
-    # Get Colors
-    colors = []
-    colors.append(ax2.get_children()[0].get_facecolor())
-    colors.append(ax2.get_children()[2].get_facecolor())
-    colors.append(ax2.get_children()[4].get_facecolor())
+    # # Get Colors
+    # colors = []
+    # colors.append(ax2.get_children()[0].get_facecolor())
+    # colors.append(ax2.get_children()[2].get_facecolor())
+    # colors.append(ax2.get_children()[4].get_facecolor())
     
     ## MEDIAN RT MEASURES
     # Compute RT measures
-    ax3 = plt.subplot(2,2,4)
-    median_rts = beh_data.query('correct==1 and repeat==2').groupby('category')['rt'].median().to_frame()
-    mean_rts = beh_data.query('correct==1 and repeat==2').groupby('category')['rt'].mean().to_frame()
-    sd_rts = beh_data.query('correct==1 and repeat==2').groupby('category')['rt'].std().to_frame()
-    ax3.bar(np.array([1,1.5,2]), median_rts.pivot_table(columns='category', values='rt').values.squeeze(), 
-            width=.3, color=colors)
-    ax3.set_xlim(.25,2.75)
-    ax3.set_ylim(.25, ax3.get_ylim()[-1]+.1)
-    ax3.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    ax3.set_title('Median RT', y=1.15, fontsize=18, fontweight='bold')
-    ax3.set_ylabel('RT (sec)')
-    ax3.set_xlabel('*for correct 1back trials only')
+    median_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].median().to_frame()
+    mean_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].mean().to_frame()
+    sd_rts = beh_data.query('correct==1').groupby(group_by[0:2])['rt'].std().to_frame()
     
-    # Plot labels
-    x_pos = .85
-    for v in median_rts.values:
-        ax3.text(x_pos, v[0]+.015, f'{v[0]: 1.2f}', color='black')
-        x_pos += .5
+    # Plot median RT
+    ax3 = plt.subplot(2,2,4)
+    median_rts.unstack('gabor_loc').plot(kind='bar', ax=ax3, legend=False)
+    ax3.tick_params(axis='x', rotation=0)
+    ax3.set_title('Median RT', y=1.20, fontsize=18, fontweight='bold')
+    ax3.set_ylabel('RT (sec)', fontsize=16)
+    ax3.set_xlabel('Trial Type', fontsize=16)
     
     # Save plot to figures
     fig_path = deriv_dir / sub_string / 'figures'
@@ -117,16 +104,29 @@ for sub in bids_dir.glob('sub-*'):
         'set': [beh_data.iloc[0]['stim_set']]
     }
     
+    # Make combination of names 
+    gabors = ['top', 'bottom']
+    trial_types = ['standard', 'oddball']
+    conditions = list()
+    for trial_type in trial_types:
+        for gabor in gabors:
+            conditions.append([trial_type, gabor])
+            
+    # Add in no resposnes
+    for cond in conditions:
+        this_key = f'{cond[0]}_{cond[1]}_p_no_resp'
+        this_query = f'letter_type=="{cond[0]}" and gabor_loc=="{cond[1]}"'
+        out_dict[this_key] = (beh_data.query(this_query)['n_resp']==0).mean()
+        
     # Add in accuracy values
-    for cat in ['scene', 'object', 'face']:
-        for i, rep in enumerate(['novel', '1back']):
-            out_dict[f'{cat}_{rep}_acc'] = [proportions.loc[i+1][cat]]
-            
-    # Add in RT values
+    for cond in conditions:
+        this_key = f'{cond[0]}_{cond[1]}_acc'
+        out_dict[this_key] = [proportions.loc[cond[0]][cond[1]]]
+    
     for val in ['median', 'mean', 'sd']:
-        for cat in ['scene', 'object', 'face']:
-            out_dict[f'{cat}_{val}_rt'] = eval(f'[{val}_rts.loc["{cat}"]["rt"]]')
-            
+        for cond in conditions:
+            this_key = f'{cond[0]}_{cond[1]}_{val}_rt'
+            out_dict[this_key] = eval(f'[{val}_rts.loc[("{cond[1]}", "{cond[0]}")]["rt"]]')
     # Write summary data file
     summary_file = out_path / f'{sub_string}_task-{task}_desc-summarystats_beh.tsv'
     pd.DataFrame().from_dict(out_dict).to_csv(summary_file, index=False, sep='\t')    
