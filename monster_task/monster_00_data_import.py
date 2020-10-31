@@ -161,6 +161,8 @@ for sub in source_dir.glob('sub-*'):
     beh_data = pd.read_csv(beh_source_file, sep='\t')
     beh_data.rename(columns=cols_to_rename, inplace=True)
     beh_data.drop(columns=cols_to_drop, inplace=True)
+    if beh_data.shape[0] == 481:
+        beh_data.drop(index=480)
 
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id
@@ -169,13 +171,24 @@ for sub in source_dir.glob('sub-*'):
     beh_data['resp'].fillna('n/a', inplace=True)
     beh_data['rt'].replace(-99.0, 'n/a', inplace=True)
     beh_data['correct'].fillna(0, inplace=True)
+    beh_data['correct'].replace(-99.0, 0, inplace=True)
     
     # Convert accuracy to integer
     beh_data['correct'] = beh_data['correct'].astype(int)
     
     # Fil in some more values
     beh_data.replace(['None', '', '--'], 'n/a', inplace=True)
+    beh_data.fillna('n/a', inplace=True)
+    
+    # Make the abin_label column
+    angle_bins = {}
+    for i, a in enumerate(np.unique(beh_data.angle_bin)):
+        angle_bins[a] = f'bin{i+1}'
+    beh_data['abin_label'] = beh_data['angle_bin'].replace(to_replace=angle_bins)
 
+    # Make a number of responses column
+    beh_data['n_resp'] = (beh_data['resp'] != 'n/a').astype(int)
+    
     # Save behavioral data
     bids_path.update(datatype='beh')
     bids_path.directory.mkdir(parents=True, exist_ok=True)
