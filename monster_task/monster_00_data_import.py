@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import json
 from random import (random, randrange)
+from datetime import datetime
 
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
@@ -75,7 +76,7 @@ cols_to_rename = {
 }
 
 # List of columns to add to *events.tsv from behavioral data
-cols_to_add = ['angle_bin', 'correct', 'correct_resp', 'gabor_loc', 
+cols_to_add = ['angle_bin', 'abin_label', 'correct', 'correct_resp', 'gabor_loc', 
                'phase', 'resp', 'rt', 'this_angle']
 
 #####---Get Subject List---#####
@@ -162,7 +163,7 @@ for sub in source_dir.glob('sub-*'):
     beh_data.rename(columns=cols_to_rename, inplace=True)
     beh_data.drop(columns=cols_to_drop, inplace=True)
     if beh_data.shape[0] == 481:
-        beh_data.drop(index=480)
+        beh_data.drop(index=480, inplace=True)
 
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id
@@ -182,7 +183,7 @@ for sub in source_dir.glob('sub-*'):
     
     # Make the abin_label column
     angle_bins = {}
-    for i, a in enumerate(np.unique(beh_data.angle_bin)):
+    for i, a in enumerate(np.unique(beh_data['angle_bin'])):
         angle_bins[a] = f'bin{i+1}'
     beh_data['abin_label'] = beh_data['angle_bin'].replace(to_replace=angle_bins)
 

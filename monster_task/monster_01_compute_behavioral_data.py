@@ -135,7 +135,5 @@ for sub in bids_dir.glob('sub-*'):
     trial_file = out_path / f'{sub_string}_task-{task}_desc-triallevel_beh.tsv'
     beh_data.to_csv(trial_file, sep='\t', index=False)
     
-    # Show plot
-    plt.show(block=False)
     
     
