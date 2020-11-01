@@ -24,6 +24,14 @@ Ro = roc_data['dpsd_model']['parameters']['Ro']
 F = roc_data['dpsd_model']['parameters']['F']
 criterion = np.asarray(roc_data['dpsd_model']['parameters']['criterion'])
 targ_proportion = np.asarray(roc_data['observed_data']['target']['cumulative'])
+targ_proportion = np.concatenate((targ_proportion, targ_proportion+.1), axis=0)
 lure_proportion = np.asarray(roc_data['observed_data']['lure']['cumulative'])
+lure_proportion = np.concatenate((lure_proportion, lure_proportion), axis=0)
+
+fig = plt.figure()
+ax1 = fig.add_subplot(111)
+ax1.plot(lure_proportion[0], targ_proportion[0], 'ro')
+ax1.plot(lure_proportion[1], targ_proportion[1], 'bx')
+plt.show()
 
 eng.quit()
