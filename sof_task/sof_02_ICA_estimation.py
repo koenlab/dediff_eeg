@@ -99,11 +99,13 @@ for sub in sub_list:
     epochs.set_montage(bv_montage)
     
     # Autodetect bad channels
-    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.75)
+    picks = mne.pick_channels(epochs.info['ch_names'], [], 
+                              exclude=['FT9','FT10','TP9','TP10', 'VEOG', 'HEOG'])
+    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.75, picks=picks)
     ransac.fit(epochs)
     if len(ransac.bad_chs_):
         for chan in ransac.bad_chs_:
-            epochs.info['bads'].extend(chan)
+            epochs.info['bads'].append(chan)
     
     # Run autoreject
     ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
