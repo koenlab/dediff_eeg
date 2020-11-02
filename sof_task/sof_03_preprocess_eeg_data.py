@@ -1,5 +1,5 @@
 """
-Script: 02_sof_preprocess_eeg.py
+Script: 03_sof_preprocess_eeg.py
 Creator: Joshua D. Koen
 Description: This script imports data from sourcedata to bids format for 
 the SOF (scene, object, face) task. 
@@ -108,7 +108,7 @@ for sub in sub_list:
     # epochs.drop_bad(reject=reject)
     
     #Find blinks at onset
-    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
+    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs with blink at stim onset:', blink_inds)
@@ -124,7 +124,7 @@ for sub in sub_list:
             epoch_colors[i] = ['m'] * n_channels
     
     # Visual inspect
-    epochs.plot(n_channels=66, n_epochs=5, block=False,
+    epochs.plot(n_channels=66, n_epochs=5, block=True,
                 scalings=dict(eeg=125e-6, eog=300e-6), 
                 epoch_colors=epoch_colors, picks='all')
     
@@ -135,7 +135,7 @@ for sub in sub_list:
     epochs.metadata.to_csv(events_save_file, sep='\t')
     
     # remove blinks from epochs_ar then save (fully auto)
-    veog_data = epochs_ar.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
+    veog_data = epochs_ar.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     epochs_ar.drop(blink_inds)

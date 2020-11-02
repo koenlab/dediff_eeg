@@ -101,11 +101,12 @@ for sub in sub_list:
     # Autodetect bad channels
     picks = mne.pick_channels(epochs.info['ch_names'], [], 
                               exclude=['FT9','FT10','TP9','TP10', 'VEOG', 'HEOG'])
-    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.75, picks=picks)
+    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.70, picks=picks)
     ransac.fit(epochs)
     if len(ransac.bad_chs_):
         for chan in ransac.bad_chs_:
             epochs.info['bads'].append(chan)
+    print(epochs.info['bads'])
     
     # Run autoreject
     ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
@@ -114,7 +115,7 @@ for sub in sub_list:
     reject_log = ar.get_reject_log(epochs)
     
     # Detect eog at stim onsets
-    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.075, tmax=.075).pick_channels(['VEOG']).get_data()
+    veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
     veog_diff = np.abs(veog_data.max(axis=2) - veog_data.min(axis=2))
     blink_inds = np.where(veog_diff.squeeze()>preprocess_options['blink_thresh'])[0]
     print('Epochs with blink at stim onset:', blink_inds)
