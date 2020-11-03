@@ -43,7 +43,7 @@ for sub in sub_list:
     
     ### STEP 1: LOAD RESAMPLED DATA AND EVENTS
     # Load Raw EEG data from derivatives folder
-    resamp_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_raw.fif.gz'
+    resamp_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
     raw = read_raw_fif(resamp_fif_file, preload=True)
 
     # Load events
@@ -58,11 +58,11 @@ for sub in sub_list:
     metadata.sample = events[:,0]
     metadata.onset = metadata.sample / raw.info['sfreq']
     metadata_file = deriv_path / f'{sub_string}_task-{task}_metadata.tsv'
-    metadata.to_csv(metadata_file, sep='\t')
+    metadata.to_csv(metadata_file, sep='\t', index=False)
     
     ### Step 3: Filter Data and apply IC estimates and rereference/re-baseline
     # Load ICA
-    ica_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_ica.fif.gz'
+    ica_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_ica.fif.gz'
     ica = read_ica(ica_file)
 
     # High Pass Filter raw and make epochs
@@ -97,7 +97,7 @@ for sub in sub_list:
     ### Step 4: Artifact Rejection
     # Run autoreject
     ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
-                    random_state=42, verbose='tqdm', n_jobs=8)
+                    random_state=42, verbose='tqdm', n_jobs=4)
     ar.fit(epochs)
     epochs_ar, reject_log = ar.transform(epochs, return_log=True)
     
@@ -132,7 +132,36 @@ for sub in sub_list:
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     epochs.save(epochs_fif_file, overwrite=True)
     events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv'
-    epochs.metadata.to_csv(events_save_file, sep='\t')
+    epochs.metadata.to_csv(events_save_file, sep='\t', index=False)
+
+    # Find bad epochs
+    bad_epochs = []
+    for i, epo in enumerate(epochs.drop_log):
+        if len(epo) > 0:
+            bad_epochs.append(i)
+
+    # Make JSON
+    json_info = {
+        'Description': 'Manually cleaned epochs',
+        'sfreq': epochs.info['sfreq'],
+        'reference': 'average',
+        'filter': {
+            'lowcutoff': 0.1,
+            'highcutoff': None,
+            'notch': 60.0,
+            'Description': 'Notch only applied to EOG channels'
+                  },
+        'tmin': epochs.times.max(),
+        'tmax': epochs.times.min(),
+        'bad_epochs': bad_epochs,
+        'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
+        'interpolated_channels': epochs.info['bads'],
+        'metadata': metadata_file.name
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-cleaned_epo.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
     
     # remove blinks from epochs_ar then save (fully auto)
     veog_data = epochs_ar.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
@@ -142,6 +171,35 @@ for sub in sub_list:
     epochs_ar_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-autoreject_epo.fif.gz'
     epochs_ar.save(epochs_ar_fif_file, overwrite=True)
     events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-autoreject_metadata.tsv'
-    epochs_ar.metadata.to_csv(events_save_file, sep='\t')
+    epochs_ar.metadata.to_csv(events_save_file, sep='\t', index=False)
+
+    # Find bad epochs
+    bad_epochs_ar = []
+    for i, epo in enumerate(epochs_ar.drop_log):
+        if len(epo) > 0:
+            bad_epochs_ar.append(i)
+
+    # Make JSON
+    json_info = {
+        'Description': 'Autoreject pipeline',
+        'sfreq': epochs_ar.info['sfreq'],
+        'reference': 'average',
+        'filter': {
+            'lowcutoff': 1.0,
+            'highcutoff': None,
+            'notch': 60.0,
+            'Description': 'Notch only applied to EOG channels'
+                  },
+        'tmin': epochs_ar.times.max(),
+        'tmax': epochs_ar.times.min(),
+        'bad_epochs': bad_epochs_ar,
+        'proportion_rejected_epochs': len(bad_epochs_ar)/len(epochs_ar),
+        'interpolated_channels': epochs_ar.info['bads'],
+        'metadata': events_save_file.name
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-autoreject_epo.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
     
     
