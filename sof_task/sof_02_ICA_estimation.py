@@ -20,10 +20,9 @@ import json
 from mne.io import read_raw_fif
 from mne import events_from_annotations
 from mne.preprocessing import ICA
-from mne.time_frequency import psd_welch
 import mne
 
-from autoreject import (AutoReject, Ransac, get_rejection_threshold)
+from autoreject import (AutoReject, Ransac)
 
 from sof_config import (bids_dir, deriv_dir, event_dict, 
                         task, preprocess_options, bv_montage,
@@ -50,7 +49,7 @@ for sub in sub_list:
     
     ### STEP 1: LOAD DATA AND UPDATE EVENTS
     # Load Raw EEG data from derivatives folder
-    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-import_raw.fif.gz'
+    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw = read_raw_fif(raw_fif_file, preload=True)
 
     # Read events from annotations
@@ -85,6 +84,20 @@ for sub in sub_list:
     event_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_eve.txt'
     mne.write_events(event_file, events)
     
+    # Make a JSON
+    json_info = {
+        'Description': 'Resampled Events Information',
+        'columns': ['onset', 'duration', 'code'],
+        'onset_units': 'samples',
+        'sfreq': raw.info['sfreq'],
+        'codes': event_id,
+        'num_events_adjusted': events_adjusted
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_eve.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
+
     ### Step 2: Estimate ICA
     # Apply HPF to all channels and a 60Hz Notch filter to eogs
     raw.filter(preprocess_options['ica_lowcutoff'], None, 
@@ -106,7 +119,7 @@ for sub in sub_list:
     if len(ransac.bad_chs_):
         for chan in ransac.bad_chs_:
             epochs.info['bads'].append(chan)
-    print(epochs.info['bads'])
+    print(f'RANSAC Bad Channels: {ransac.bad_chs_}')
     
     # Run autoreject
     ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
@@ -136,18 +149,46 @@ for sub in sub_list:
                     epoch_colors=epoch_colors, picks='all')
     
     # Save ICA epochs
-    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_epo.fif.gz'
+    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_epo.fif.gz'
     epochs.save(epochs_fif_file, overwrite=True)
+
+    # Find bad epochs
+    bad_epochs = []
+    for i, epo in enumerate(epochs.drop_log):
+        if len(epo) > 0:
+            bad_epochs.append(i)
+
+    # Make a JSON
+    json_info = {
+        'Description': 'Epochs for ICA',
+        'sfreq': epochs.info['sfreq'],
+        'reference': 'FCz',
+        'filter': {
+            'lowcutoff': 1.0,
+            'highcutoff': None,
+            'notch': 60.0,
+            'Description': 'Notch only applied to EOG channels'
+                  },
+        'tmin': epochs.times.max(),
+        'tmax': epochs.times.min(),
+        'bad_epochs': bad_epochs,
+        'bad_channels': epochs.info['bads'],
+        'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
+        'metadata': 'n/a',
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_epo.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
     
     # Estimate ICA
-    #ica = ICA(method='fastica', max_iter=1000, random_state=97)
     ica = ICA(method='picard', max_iter=1000, random_state=97, 
               fit_params=dict(ortho=True, extended=True), 
               verbose=True)
     ica.fit(epochs)
     
     # Save ICA
-    ica_file = deriv_path / f'{sub_string}_task-{task}_desc-ica_ica.fif.gz'
+    ica_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_ica.fif.gz'
     ica.save(ica_file)
     
     # Find EOG artifacts
@@ -162,11 +203,50 @@ for sub in sub_list:
     ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
     ica.save(ica_file)
-    
+
+    # Make a JSON
+    json_info = {
+        'Description': 'ICA components',
+        'sfreq': ica.info['sfreq'],
+        'reference': 'FCz',
+        'ica_method': {
+            'method': 'picard',
+            'fit_params': dict(ortho=True, extended=True)
+                      },
+        'filter': {
+            'lowcutoff': 1.0,
+            'highcutoff': None,
+                  },
+        'n_components': len(ica.info['chs']),
+        'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
+        'flagged_components': [int(x) for x in ica.exclude],
+        'eog_scores': {
+            'description': 'Correlation with VEOG and HEOG bipolar recordings',
+            'veog_scores': {f'comp{i:02d}': float(x) for i, x in enumerate(eog_scores[0])},
+            'heog_scores': {f'comp{i:02d}': float(x) for i, x in enumerate(eog_scores[1])},
+                      }
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_ica.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
+
     # Save raw with bads attached
-    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_raw.fif.gz'
+    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
     raw.info['bads'] = epochs.info['bads']
     raw.save(raw_fif_file, overwrite=True)
+
+    # Make JSON file
+    json_info = {
+        'Description': 'Resampled continuous data',
+        'sfreq': raw.info['sfreq'],
+        'reference': 'FCz',
+        'bad_channels': raw.info['bads'],
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
     
 
     
