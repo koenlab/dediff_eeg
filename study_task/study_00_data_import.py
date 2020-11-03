@@ -14,11 +14,10 @@ from random import (random, randrange)
 from mne.io import read_raw_brainvision
 from mne import events_from_annotations
 from mne_bids import BIDSPath, write_raw_bids
-from mne_bids.copyfiles import copyfile_brainvision
 
 import mne
 
-from study_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
+from study_config import (bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans)
 
 #####---Overwrite BIDS---#####
 overwrite = True
@@ -205,6 +204,19 @@ for sub in source_dir.glob('sub-*'):
     test_data = test_data.merge(study_data[study_to_test], how='left', on='image')
     test_data.fillna(value='n/a', inplace=True)
 
+    ### HANDLE SPECIAL SUBJECTS ON DATA FILE
+    if bids_id=='120':
+        bad_study_trials = np.arange(28)
+        bad_trials = study_data.iloc[bad_study_trials]['image'].to_list()
+        study_data.drop(index=bad_study_trials, inplace=True)
+        bad_test_trials = []
+        for i, image in enumerate(test_data['image']):
+            if image in bad_trials:
+                bad_test_trials.append(i)
+        test_data.drop(index=bad_test_trials, inplace=True)
+        study_data.reset_index(inplace=True)
+        test_data.reset_index(inplace=True)
+
     ### SAVE STUDY AND TEST DATA ###
     # Update BIDSPath
     bids_path.update(datatype='beh')
@@ -260,10 +272,43 @@ for sub in source_dir.glob('sub-*'):
 
     ### Write Raw and Events to .fif.gz file
     # Write Raw instance
-    raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_raw.fif.gz'
+    raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw.save(raw_out_file, overwrite=overwrite)
+
+     # Make a JSON
+    json_info = {
+        'Description': 'Import from BrainVision Recorder',
+        'sfreq': raw.info['sfreq'],
+        'reference': 'FCz'
+    }
+    json_file = deriv_path / f'sub-{bids_id}_task-{task}_ref-FCz_desc-import_raw.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
 
     # Write events
     events_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.txt'
     mne.write_events(events_out_file, events)
+
+    # Write events
+    events_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.txt'
+    mne.write_events(events_out_file, events)
+
+     # Make a JSON
+    json_info = {
+        'Description': 'Events from Brain Vision Import',
+        'columns': ['onset', 'duration', 'code'],
+        'onset_units': 'samples',
+        'sfreq': raw.info['sfreq'],
+        'codes': event_id
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_desc-import_eve.json'
+    try:
+        json_file.unlink()
+    except:
+        pass
+    json_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
    
