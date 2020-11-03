@@ -19,7 +19,7 @@ from mne_bids.copyfiles import copyfile_brainvision
 
 import mne
 
-from monster_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
+from monster_config import (bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans)
 
 #####---Overwrite BIDS---#####
 overwrite = True
@@ -230,10 +230,39 @@ for sub in source_dir.glob('sub-*'):
 
     ### Write Raw and Events to .fif.gz file
     # Write Raw instance
-    raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_raw.fif.gz'
+    raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw.save(raw_out_file, overwrite=overwrite)
+
+    # Make a JSON
+    json_info = {
+        'Description': 'Import from BrainVision Recorder',
+        'sfreq': raw.info['sfreq'],
+        'reference': 'FCz'
+    }
+    json_file = deriv_path / f'sub-{bids_id}_task-{task}_ref-FCz_desc-import_raw.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
 
     # Write events
     events_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.txt'
     mne.write_events(events_out_file, events)
+
+     # Make a JSON
+    json_info = {
+        'Description': 'Events from Brain Vision Import',
+        'columns': ['onset', 'duration', 'code'],
+        'onset_units': 'samples',
+        'sfreq': raw.info['sfreq'],
+        'codes': event_id
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_desc-import_eve.json'
+    try:
+        json_file.unlink()
+    except:
+        pass
+    json_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
         
