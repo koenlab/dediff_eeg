@@ -72,12 +72,36 @@ for sub in sub_list:
     scene_list.append(scenes)
     object_list.append(objects)
     
-    
+grands = [
+    mne.grand_average(face_list),
+    mne.grand_average(scene_list),
+    mne.grand_average(object_list)
+]
+grands[0].comment='face'
+grands[1].comment='scene'
+grands[2].comment='object'    
+diff = [
+    mne.combine_evoked(grands, weights=[1,0,-1]).filter(None,20),
+    mne.combine_evoked(grands, weights=[0,1,-1]).filter(None,20)
+]
     # evokeds = [faces, scenes, objects]
     # mne.viz.plot_compare_evokeds(evokeds, picks='PO8')
     # evokeds_lpf = [faces_lpf, scenes_lpf, objects_lpf]
     mne.viz.plot_compare_evokeds(grands, picks='PO8')
-    
+    mne.viz.plot_compare_evokeds(diff, picks='PO8')
+
+_, t1, v1 = diff[0].pick('PO8').get_peak(mode='neg', return_amplitude=True, tmin=.1, tmax=.17)
+_, t2, v2 = diff[1].pick('PO8').get_peak(mode='pos', return_amplitude=True, tmin=.15, tmax=.25)
+
+print('Face')
+print(t1,old_t1)
+print(v1*1e6,old_v1*1e6)    
+
+print('Scene')
+print(t2,old_t2)
+print(v2*1e6,old_v2*1e6)    
+
+
     # diff_v_objects = [
     #     mne.combine_evoked(evokeds, weights=[1, 0, -1]),
     #     mne.combine_evoked(evokeds, weights=[0, 1, -1])
