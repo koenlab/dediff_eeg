@@ -90,8 +90,8 @@ diff = [
     mne.viz.plot_compare_evokeds(grands, picks='PO8')
     mne.viz.plot_compare_evokeds(diff, picks='PO8')
 
-_, t1, v1 = diff[0].pick('PO8').get_peak(mode='neg', return_amplitude=True, tmin=.1, tmax=.17)
-_, t2, v2 = diff[1].pick('PO8').get_peak(mode='pos', return_amplitude=True, tmin=.15, tmax=.25)
+_, old_t1, old_v1 = diff[0].pick('PO8').get_peak(mode='neg', return_amplitude=True, tmin=.1, tmax=.17)
+_, old_t2, old_v2 = diff[1].pick('PO8').get_peak(mode='pos', return_amplitude=True, tmin=.15, tmax=.25)
 
 print('Face')
 print(t1,old_t1)
