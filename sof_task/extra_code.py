@@ -1,4 +1,78 @@
+def check_nans(data, nan_policy='zero'):
+    """Check an array for nan values, and replace, based on policy."""
+
+    # Find where there are nan values in the data
+    nan_inds = np.where(np.isnan(data))
+
+    # Apply desired nan policy to data
+    if nan_policy == 'zero':
+        data[nan_inds] = 0
+    elif nan_policy == 'mean':
+        data[nan_inds] = np.nanmean(data)
+    else:
+        raise ValueError('Nan policy not understood.')
+
+    return data    
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm, colors, colorbar
+from fooof import FOOOFGroup
+from fooof.bands import Bands
+from fooof.analysis import get_band_peak_fg
+from mne.time_frequency import psd_welch
+from mne.viz import plot_topomap
+
+new_epochs = epochs.copy().crop(tmin=-1.1,tmax=0).pick_types(eeg=True, exclude=['TP9','TP10','FT9','FT10'])
+psd, freqs = psd_welch(new_epochs, 
+                       fmin=1, fmax=40, 
+                       average='median')
+psd = psd.mean(axis=0)
+psd = np.asarray(psd)
+fg = FOOOFGroup(peak_width_limits=[1, 6], min_peak_height=0.15,
+                peak_threshold=2., max_n_peaks=6, verbose=False)
+freq_range = [2, 25]
+fg.fit(freqs, psd, freq_range)
+fg.plot()
+bands = Bands({'theta': [3, 7],
+               'alpha': [7, 14],
+               'beta': [15, 30]})
+alphas = get_band_peak_fg(fg, bands.alpha)
+alpha_pw = alphas[:,1]
+fig = plt.figure()
+plot_topomap(alpha_pw, new_epochs.info, cmap=cm.viridis, contours=0)
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+for ind, (label, band_def) in enumerate(bands):
+
+    # Get the power values across channels for the current band
+    band_power = check_nans(get_band_peak_fg(fg, band_def)[:, 1])
+
+    # Create a topomap for the current oscillation band
+    mne.viz.plot_topomap(band_power, new_epochs.info, cmap=cm.viridis, contours=0,
+                         axes=axes[ind], show=False);
+
+    # Set the plot title
+    axes[ind].set_title(label + ' power', {'fontsize' : 20})
     
+fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+for ind, (label, band_def) in enumerate(bands):
+
+    # Get the power values across channels for the current band
+    band_power = check_nans(get_band_peak_fg(fg, band_def)[:, 1])
+
+    # Extracted and plot the power spectrum model with the most band power
+    fg.get_fooof(np.argmax(band_power)).plot(ax=axes[ind], add_legend=False)
+
+    # Set some plot aesthetics & plot title
+    axes[ind].yaxis.set_ticklabels([])
+    axes[ind].set_title('biggest ' + label + ' peak', {'fontsize' : 16})
+
+fig = plt.figure()
+exps = fg.get_params('aperiodic_params', 'exponent')
+plot_topomap(exps, new_epochs.info, cmap=cm.viridis, contours=0)
     # # Manually inspect 
     # for ic in ica.exclude:
     #     ica.plot_properties(epochs, picks=ic, show=False,

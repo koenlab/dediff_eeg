@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 
+
 from mne import read_epochs
 import mne
 
@@ -73,9 +74,9 @@ for sub in sub_list:
     object_list.append(objects)
     
 grands = [
-    mne.grand_average(face_list),
-    mne.grand_average(scene_list),
-    mne.grand_average(object_list)
+    mne.grand_average(face_list).filter(None,20),
+    mne.grand_average(scene_list).filter(None,20),
+    mne.grand_average(object_list).filter(None,20)
 ]
 grands[0].comment='face'
 grands[1].comment='scene'
@@ -84,14 +85,16 @@ diff = [
     mne.combine_evoked(grands, weights=[1,0,-1]).filter(None,20),
     mne.combine_evoked(grands, weights=[0,1,-1]).filter(None,20)
 ]
+diff[0].comment = 'face-object'
+diff[1].comment = 'scene-object'
     # evokeds = [faces, scenes, objects]
     # mne.viz.plot_compare_evokeds(evokeds, picks='PO8')
     # evokeds_lpf = [faces_lpf, scenes_lpf, objects_lpf]
-    mne.viz.plot_compare_evokeds(grands, picks='PO8')
-    mne.viz.plot_compare_evokeds(diff, picks='PO8')
-
-_, t1, v1 = diff[0].pick('PO8').get_peak(mode='neg', return_amplitude=True, tmin=.1, tmax=.17)
-_, t2, v2 = diff[1].pick('PO8').get_peak(mode='pos', return_amplitude=True, tmin=.15, tmax=.25)
+    mne.viz.plot_compare_evokeds(grands, axes='topo')
+    mne.viz.plot_compare_evokeds(diff, axes='topo')
+diff[1].plot_joint(times=[.13,.175])
+_, old_t1, old_v1 = diff[0].pick('PO8').get_peak(mode='neg', return_amplitude=True, tmin=.1, tmax=.17)
+_, old_t2, old_v2 = diff[1].pick('PO8').get_peak(mode='pos', return_amplitude=True, tmin=.15, tmax=.25)
 
 print('Face')
 print(t1,old_t1)
