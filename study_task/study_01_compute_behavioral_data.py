@@ -8,15 +8,6 @@ Memory (study) task.
 ### Import needed libraries
 import matlab
 from matlab.engine import start_matlab
-import numpy as np
-import pandas as pd
-import scipy.io as spio
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.ticker import FormatStrFormatter
-from collections import OrderedDict
-
-from study_config import (bids_dir, deriv_dir, task)
 
 # Start matlab engine
 eng = start_matlab()
@@ -26,6 +17,17 @@ eng.addpath(eng.genpath('/opt/matlab_software/roc_toolbox'), nargout=0)
 gen_pars = '[x0,lb,ub]=gen_pars(model,nBins,nConds,parNames);'
 fit_roc  = "roc_data=roc_solver(targf,luref,model,fitStat,x0,lb,ub,'subID',sub,'condNames',conditions,'figure',false)"
 save_roc = "save(save_file,'roc_data')"
+
+### NORMAL LIBRARIES
+import numpy as np
+import pandas as pd
+import scipy.io as spio
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.ticker import FormatStrFormatter
+from collections import OrderedDict
+
+from study_config import (bids_dir, deriv_dir, task)
 
 ### Overwrite 
 overwrite = True
@@ -112,6 +114,7 @@ for sub_string in sub_list:
                 study_acc.append(0)
         else:
             study_acc.append(np.nan)
+    
     beh_data['memory_bin'] = memory_bin
     beh_data['study_acc'] = study_acc
     del memory_bin, study_acc
@@ -201,8 +204,8 @@ for sub_string in sub_list:
     colors = ['tab:blue', 'tab:orange']
     for cond, color in enumerate(colors):
         ax2.scatter(lure_obs[cond], targ_obs[cond], c=color).set_clip_on(False)
-    # ax2.legend(['scene','object'], fontsize=14, loc='upper center', frameon=False,
-    #            mode='expand', ncol=2, bbox_to_anchor=(0,1.05,1 ,.12))
+    ax2.legend(['scene','object'], fontsize=14, loc='upper center', frameon=False,
+               mode='expand', ncol=2, bbox_to_anchor=(0,1.05,1 ,.12))
     for cond, color in enumerate(colors):
         ax2.plot(lure_pred[cond], targ_pred[cond], color=color)
     ax2.plot((0,1),(0,1), color='k', linestyle='--', linewidth=1)
@@ -257,7 +260,7 @@ for sub_string in sub_list:
         ax6.text(x_pos - .125, v+.015, f'{v[0]:.2f}', color='k')
     ax6.legend(barlist.get_children(),['scene', 'object', 'overall'], 
                loc='upper center', mode='expand', ncol=3, 
-               bbox_to_anchor=(-3.25,1.4,4,.12), frameon=False,
+               bbox_to_anchor=(-4,1.4,4.5,.12), frameon=False,
                fontsize=18)
     
     ## Study Performance Data
@@ -334,6 +337,50 @@ for sub_string in sub_list:
         'age': ['young' if int(sub_id) < 200 else 'older'],
         'set': [beh_data.iloc[0]['stim_set']]
     }
+    
+    # Add Memory performance measures
+    out_dict['overall_hit_rate'] = overall_hit
+    out_dict['overall_fa_rate'] = overall_fa
+    out_dict['overall_pr'] = overall_pr
+    out_dict['scene_hit_rate'] = hits[0]
+    out_dict['object_hit_rate'] = hits[1]
+    out_dict['scene_fa_rate'] = fas[0]
+    out_dict['object_fa_rate'] = fas[1]
+    out_dict['scene_item_pr'] = pr[0]
+    out_dict['object_item_pr'] = pr[1]
+    out_dict['scene_recollection'] = Ro[0]
+    out_dict['object_recollection'] = Ro[1]
+    out_dict['scene_familiarity'] = F[0]
+    out_dict['object_familiarity'] = F[1]
+    for i1, cond in enumerate(['scene', 'object']):
+        for i2, v in enumerate(np.arange(5,0,-1)):
+            out_dict[f'{cond}_c{v}'] = c[i1,i2]
+    for cond in ['scene','object']:
+        for itype in ['old','new']:
+            for col in targf.columns:
+                out_dict[f'{cond}_{itype}_conf_{col}'] = counts.loc[(cond,itype), col]
+    
+    # Add Study RT Measurse
+    for val in ['median', 'mean', 'sd']:
+        this_rt = eval(f'study_{val}_rts')
+        for cond in ['scene','object']:
+            for mem_bin in ['hit','miss']:
+                out_dict[f'{cond}_{mem_bin}_{val}_study_rt'] = this_rt.loc[(cond,mem_bin)]['study_rt']
+                
+    # Add Test RT Measurse
+    for val in ['median', 'mean', 'sd']:
+        this_rt = eval(f'test_{val}_rts')
+        for cond in ['scene','object']:
+            for mem_bin in ['hit','miss','cr','fa']:
+                out_dict[f'{cond}_{mem_bin}_{val}_test_rt'] = this_rt.loc[(cond,mem_bin)]['test_rt']
+    
+    # Write summary data file
+    summary_file = out_path / f'{sub_string}_task-{task}_desc-summarystats_beh.tsv'
+    pd.DataFrame().from_dict(out_dict).to_csv(summary_file, index=False, sep='\t')    
+    
+    # Write copy of behavior data to derivatives
+    trial_file = out_path / f'{sub_string}_task-{task}_desc-triallevel_beh.tsv'
+    beh_data.to_csv(trial_file, sep='\t', index=False)
     
     
     
