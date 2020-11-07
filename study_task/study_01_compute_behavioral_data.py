@@ -21,7 +21,6 @@ save_roc = "save(save_file,'roc_data')"
 ### NORMAL LIBRARIES
 import numpy as np
 import pandas as pd
-import scipy.io as spio
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.ticker import FormatStrFormatter
