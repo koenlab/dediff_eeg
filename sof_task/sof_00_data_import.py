@@ -17,7 +17,8 @@ from mne_bids import BIDSPath, write_raw_bids
 
 import mne
 
-from sof_config import bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans
+from sof_config import (bids_dir, source_dir, deriv_dir, 
+                        event_dict, task, bad_chans, get_sub_list)
 
 #####---Overwrite BIDS---#####
 overwrite = False
@@ -53,11 +54,11 @@ cols_to_add = ['trial_number','category','subcategory','repeat','resp',
                'rt','correct','n_responses']
 
 #####---Get Subject List---#####
-for sub in source_dir.glob('sub-*'):
+sub_list = get_sub_list(source_dir, is_source=True, allow_all=True)
+for sub_string in sub_list:
     
     ### SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
-    sub_string = sub.name
     sub_id = sub_string.replace('sub-','')
     bids_id = sub_id.replace('p3e2s','')
     source_path = source_dir / sub_string

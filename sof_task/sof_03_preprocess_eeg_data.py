@@ -19,21 +19,15 @@ import mne
 from autoreject import  (AutoReject, get_rejection_threshold)
 
 from sof_config import (bids_dir, deriv_dir, task, preprocess_options, 
-                        bv_montage, n_interpolates, consensus)
+                        bv_montage, n_interpolates, consensus, get_sub_list)
 from sof_config import event_dict as event_id
 
 # Ask for subject IDs to analyze
-print('What IDs are being preprocessed?')
-print('(Enter multiple values separated by a comma; e.g., 101,102)')
-sub_list = input('Enter IDs: ')
-sub_list = sub_list.split(',')
-print(sub_list)
-
-for sub in sub_list:
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+for sub_string in sub_list:
 
     ### SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
-    sub_string = f'sub-{sub}'
     bids_path = bids_dir / sub_string
     deriv_path = deriv_dir / sub_string
     fig_path = deriv_path / 'figures'
@@ -158,7 +152,7 @@ for sub in sub_list:
         'interpolated_channels': epochs.info['bads'],
         'metadata': metadata_file.name
     }
-    json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-cleaned_epo.json'
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
     with open(json_file, 'w') as outfile:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file

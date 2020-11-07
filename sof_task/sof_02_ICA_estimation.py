@@ -26,20 +26,14 @@ from autoreject import (AutoReject, Ransac)
 
 from sof_config import (bids_dir, deriv_dir, event_dict, 
                         task, preprocess_options, bv_montage,
-                        n_interpolates, consensus)
+                        n_interpolates, consensus, get_sub_list)
 
 # Ask for subject IDs to analyze
-print('What IDs are being preprocessed?')
-print('(Enter multiple values separated by a comma; e.g., 101,102)')
-sub_list = input('Enter IDs: ')
-sub_list = sub_list.split(',')
-print(sub_list)
-
-for sub in sub_list:
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+for sub_string in sub_list:
 
     ### STEP 0: SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
-    sub_string = f'sub-{sub}'
     bids_path = bids_dir / sub_string
     deriv_path = deriv_dir / sub_string
     fig_path = deriv_path / 'figures'
