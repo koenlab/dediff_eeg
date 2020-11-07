@@ -2,6 +2,7 @@ from pathlib import Path
 import platform
 import numpy as np
 from mne.channels import read_custom_montage
+import scipy.io as spio
 
 ### THESE ARE THINGS I CAN CHANGE AND UPDATE ###
 ### Define task name ###
