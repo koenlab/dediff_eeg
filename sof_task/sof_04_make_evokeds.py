@@ -57,8 +57,8 @@ for sub_string in sub_list:
         evokeds[cond].append(evoked)
         these_evokeds.append(evoked)
 
-    scene_diff = mne.combine_evoked(these_evokeds,weights=[1,-1,0])
-    face_diff = mne.combine_evoked(these_evokeds,weights=[0,-1,1])
+    scene_diff = mne.combine_evoked(these_evokeds,weights=[1,-1,0]).filter(None,20)
+    face_diff = mne.combine_evoked(these_evokeds,weights=[0,-1,1]).filter(None,20)
     rois = {
         'right': mne.pick_channels(face_diff.info['ch_names'], ['PO8','P8'] ),
         'left': mne.pick_channels(face_diff.info['ch_names'], ['PO7','P7'] )
@@ -80,19 +80,58 @@ for sub_string in sub_list:
         data[f'{roi[0]}_face_peak_latency'].append(t*1000)
         data[f'{roi[0]}_face_peak_voltage'].append(v*1e6)
         
-# import pandas as pd
-# df = pd.DataFrame(data)
-# from scipy.stats import ttest_ind
-# dvs = df.columns[2:].tolist()
+import pandas as pd
+df = pd.DataFrame(data)
+from scipy.stats import ttest_ind
+dvs = df.columns[2:].tolist()
 
-# stats = {}
-# for dv in dvs:
-#     y = df[df['age']=='young'][dv]
-#     o = df[df['age']=='older'][dv]
-#     stats[dv] = ttest_ind(y,o)
+stats = {}
+for dv in dvs:
+    y = df[df['age']=='young'][dv]
+    o = df[df['age']=='older'][dv]
+    stats[dv] = ttest_ind(y,o)
+
+
+
+young = [i for i,val in enumerate((df['age'] == 'young').values.tolist()) if val]
+old = [i for i,val in enumerate((df['age'] == 'older').values.tolist()) if val]
+
+grand_young = [mne.grand_average(list(np.array(evokeds[x])[young])).filter(None,20) for x in evokeds.keys()]
+grand_old = [mne.grand_average(list(np.array(evokeds[x])[old])).filter(None,20) for x in evokeds.keys()]
+
+for i, v in enumerate(['scene','object','face']):
+    grand_young[i].comment = v + 'young'
+    grand_old[i].comment = v + 'older'
+
+ylim = dict(eeg=[-5,12])
+f = mne.viz.plot_compare_evokeds(grand_young, picks=['PO7','P7'], combine='mean', ylim=ylim)
+f[0].savefig(bids_dir / '..' / 'young_grand_left.jpg')
+f = mne.viz.plot_compare_evokeds(grand_old, picks=['PO7','P7'], combine='mean', ylim=ylim)
+f[0].savefig(bids_dir / '..' / 'old_grand_left.jpg')
+
+diff_scene = [
+    mne.combine_evoked(grand_young, weights=[1,-1,0]),
+    mne.combine_evoked(grand_old, weights=[1,-1,0])
+]
+diff_scene[0].comment = 'young'
+diff_scene[1].comment = 'old'
+ylim = dict(eeg=[-1,5])
+f = mne.viz.plot_compare_evokeds(diff_scene, picks=['PO7','P7'], 
+                                combine='mean', ylim=ylim, colors=['m','g'])
+f[0].savefig(bids_dir / '..' / 'diff_grand_scene_left.jpg')
+
+diff_face = [
+    mne.combine_evoked(grand_young, weights=[0,-1,1]),
+    mne.combine_evoked(grand_old, weights=[0,-1,1])
+]
+diff_face[0].comment = 'young'
+diff_face[1].comment = 'old'
+ylim = dict(eeg=[-6,2])
+f = mne.viz.plot_compare_evokeds(diff_face, picks=['PO7','P7'], 
+                                combine='mean', ylim=ylim, colors=['m','g'])
+f[0].savefig(bids_dir / '..' / 'diff_grand_face_left.jpg')
 
 # # grands = [mne.grand_average(evokeds[x]) for x in evokeds.keys()]
-# grands = []
 # for cond in evokeds.keys():
 #     this_grand = mne.grand_average(evokeds[cond])
 #     this_grand.comment=cond
