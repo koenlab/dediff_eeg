@@ -15,7 +15,7 @@ eng.addpath(eng.genpath('/opt/matlab_software/roc_toolbox'), nargout=0)
 
 # Make matlab commands
 gen_pars = '[x0,lb,ub]=gen_pars(model,nBins,nConds,parNames);'
-fit_roc  = "roc_data=roc_solver(targf,luref,model,fitStat,x0,lb,ub,'subID',sub,'condNames',conditions,'figure',false)"
+fit_roc  = "roc_data=roc_solver(targf,luref,model,fitStat,x0,lb,ub,'subID',sub_id,'condLabels',conditions,'figure',false,'verbose',false);"
 save_roc = "save(save_file,'roc_data')"
 
 ### NORMAL LIBRARIES
@@ -27,44 +27,11 @@ import matplotlib.patches as mpatches
 from matplotlib.ticker import FormatStrFormatter
 from collections import OrderedDict
 
-from study_config import (bids_dir, deriv_dir, task)
+from study_config import (bids_dir, deriv_dir, task, loadmat)
 
 ### Overwrite 
-overwrite = True
+overwrite = False
 
-# Functions to read in .mat file
-def loadmat(filename):
-    '''
-    this function should be called instead of direct spio.loadmat
-    as it cures the problem of not properly recovering python dictionaries
-    from mat files. It calls the function check keys to cure all entries
-    which are still mat-objects
-    '''
-    data = spio.loadmat(filename, struct_as_record=False, squeeze_me=True)
-    return _check_keys(data)
-
-def _check_keys(dict):
-    '''
-    checks if entries in dictionary are mat-objects. If yes
-    todict is called to change them to nested dictionaries
-    '''
-    for key in dict:
-        if isinstance(dict[key], spio.matlab.mio5_params.mat_struct):
-            dict[key] = _todict(dict[key])
-    return dict        
-
-def _todict(matobj):
-    '''
-    A recursive function which constructs from matobjects nested dictionaries
-    '''
-    dict = {}
-    for strg in matobj._fieldnames:
-        elem = matobj.__dict__[strg]
-        if isinstance(elem, spio.matlab.mio5_params.mat_struct):
-            dict[strg] = _todict(elem)
-        else:
-            dict[strg] = elem
-    return dict
 
 sub_list = [x.name for x in bids_dir.glob('sub-*')]
 sub_list.sort()
@@ -77,6 +44,7 @@ for sub_string in sub_list:
     sub_id = sub_string.replace('sub-', '')
     out_path = deriv_dir / sub_string 
     out_path.mkdir(parents=True, exist_ok=True)
+    print(f'Output directory: {out_path}')
     
     # Make figure
     plt.close('all')
@@ -132,6 +100,11 @@ for sub_string in sub_list:
     # Calculate trial counts 
     counts = beh_data.query(query).groupby(group_by)['test_resp'].value_counts(sort=False)
     counts = counts.unstack('test_resp')
+    if counts.shape[1] != 6:
+        for cbin in [1,2,3,4,5,6]:
+            if cbin not in counts.columns.values:
+                counts[cbin] = np.nan
+    counts.reindex(sorted(counts.columns), axis=1)
     counts = counts.iloc[:, ::-1] # Reverse column order
     counts.columns = [str(x) for x in np.arange(6,0,-1)]
     counts.fillna(0.0, inplace=True)
@@ -282,7 +255,7 @@ for sub_string in sub_list:
     ax7.set_title('Study Median RT')
     ax7.set_ylabel('RT (sec)')
     ax7.set_box_aspect(1.6)
-    ax7.set_ylim((study_median_rts.values.min()*.95,study_median_rts.values.max()*1.05))
+    ax7.set_ylim((np.nanmin(study_median_rts.values)*.95,np.nanmax(study_median_rts.values)*1.05))
     ax7.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
    
     # Compute study acc measures
@@ -319,7 +292,7 @@ for sub_string in sub_list:
     ax9.tick_params(axis='x', rotation=0)
     ax9.set_title('Test Median RT')
     ax9.set_ylabel('RT (sec)')
-    ax9.set_ylim(test_rt_plot.values.min()*.6,test_rt_plot.values.max()*1.10)
+    ax9.set_ylim(np.nanmin(test_rt_plot.values)*.6,np.nanmax(test_rt_plot.values)*1.10)
     ax9.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     ax9.set_box_aspect(.625)
     
@@ -372,8 +345,10 @@ for sub_string in sub_list:
         this_rt = eval(f'test_{val}_rts')
         for cond in ['scene','object']:
             for mem_bin in ['hit','miss','cr','fa']:
-                out_dict[f'{cond}_{mem_bin}_{val}_test_rt'] = this_rt.loc[(cond,mem_bin)]['test_rt']
-    
+                try:
+                    out_dict[f'{cond}_{mem_bin}_{val}_test_rt'] = this_rt.loc[(cond,mem_bin)]['test_rt']
+                except:
+                    out_dict[f'{cond}_{mem_bin}_{val}_test_rt'] = np.nan
     # Write summary data file
     summary_file = out_path / f'{sub_string}_task-{task}_desc-summarystats_beh.tsv'
     pd.DataFrame().from_dict(out_dict).to_csv(summary_file, index=False, sep='\t')    
