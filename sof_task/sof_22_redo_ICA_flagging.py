@@ -12,19 +12,13 @@ from mne import read_epochs
 from mne.preprocessing import read_ica
 import mne
 
-from sof_config import (bids_dir, deriv_dir, task)
+from sof_config import (bids_dir, deriv_dir, task, get_sub_list)
 
-                        # Ask for subject IDs to analyze
-print('What IDs are being preprocessed?')
-print('(Enter multiple values separated by a comma; e.g., 101,102)')
-sub_list = input('Enter IDs: ')
-sub_list = sub_list.split(',')
-print(sub_list)
-
-for sub in sub_list:
+# Ask for subject IDs to analyze
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+for sub_string in sub_list:
 
     # Define the Subject ID and paths
-    sub_string = f'sub-{sub}'
     deriv_path = deriv_dir / sub_string
     print(f'Preprocessing task-{task} data for {sub_string}')
     print(f'  Derivatives Folder: {deriv_path}')
