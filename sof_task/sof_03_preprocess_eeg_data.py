@@ -140,8 +140,8 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': 0.1,
-            'highcutoff': None,
+            'lowcutoff': epochs.info['lowcutoff'],
+            'highcutoff': epochs.info['highcutoff'],
             'notch': 60.0,
             'Description': 'Notch only applied to EOG channels'
                   },
@@ -179,8 +179,8 @@ for sub_string in sub_list:
         'sfreq': epochs_ar.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': 1.0,
-            'highcutoff': None,
+            'lowcutoff': epochs.info['lowcutoff'],
+            'highcutoff': epochs.info['highcutoff'],
             'notch': 60.0,
             'Description': 'Notch only applied to EOG channels'
                   },

@@ -159,8 +159,8 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'FCz',
         'filter': {
-            'lowcutoff': 1.0,
-            'highcutoff': None,
+            'lowcutoff': epochs.info['lowcutoff'],
+            'highcutoff': epochs.info['highcutoff'],
             'notch': 60.0,
             'Description': 'Notch only applied to EOG channels'
                   },
@@ -209,8 +209,8 @@ for sub_string in sub_list:
             'fit_params': dict(ortho=True, extended=True)
                       },
         'filter': {
-            'lowcutoff': 1.0,
-            'highcutoff': None,
+            'lowcutoff': ica.info['lowcutoff'],
+            'highcutoff': ica.info['highcutoff'],
                   },
         'n_components': len(ica.info['chs']),
         'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
