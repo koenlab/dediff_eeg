@@ -13,7 +13,7 @@ bad_chans = {
 
 ### Autoreject parameters
 n_interpolates = np.array([1, 2, 4, 8, 12])
-consensus = np.linspace(0.4, 1.0, 6)
+consensus = np.linspace(0.4, 1.0, 7)
 
 ### Dictionary of preprocessing options
 preprocess_options = {
@@ -23,6 +23,9 @@ preprocess_options = {
     'tmin': -1.7,
     'tmax': 1.7,
     'baseline': (-.2, 0),
+    'evoked_tmin': -.2,
+    'evoked_tmax': .6, 
+    'evoked_highcutoff': 20.0, 
     'ica_lowcutoff': 1,
     'ica_tmin': -1.0, 
     'ica_tmax': 1.0,
@@ -97,3 +100,28 @@ event_dict = {
     'top/odd/a7': 126,
     'top/odd/a8': 127
 }
+
+# Define subject list function
+def get_sub_list(data_dir, allow_all=False, is_source=False):
+    # Ask for subject IDs to analyze
+    print('What IDs are being preprocessed?')
+    print('(Enter multiple values separated by a comma; e.g., 101,102)')
+    if allow_all:
+        print('To process all subjects, type all')
+    
+    sub_list = input('Enter IDs: ')
+    
+    if sub_list == 'all' and allow_all:
+        if is_source:
+            sub_list = [x.name for x in data_dir.glob('sub-p3e2s*')]
+        else:
+            sub_list = [x.name for x in data_dir.glob('sub-*')]
+    else:
+        sub_list = sub_list.split(',')
+        if is_source:
+            sub_list = [f'sub-p3e2s{x}' for x in sub_list]
+        else:
+            sub_list = [f'sub-{x}' for x in sub_list]
+
+    sub_list.sort()
+    return sub_list
