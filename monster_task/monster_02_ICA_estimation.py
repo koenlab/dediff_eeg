@@ -227,6 +227,7 @@ for sub_string in sub_list:
 
     # Save raw with bads attached
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
+    read_raw_fif(raw_fif_file, preload=True)
     raw.info['bads'] = epochs.info['bads']
     raw.save(raw_fif_file, overwrite=True)
 

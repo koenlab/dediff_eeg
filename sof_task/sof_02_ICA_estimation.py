@@ -45,6 +45,7 @@ for sub_string in sub_list:
     # Load Raw EEG data from derivatives folder
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw = read_raw_fif(raw_fif_file, preload=True)
+    orig_raw = raw.copy()
 
     # Read events from annotations
     events, event_id = mne.events_from_annotations(raw, event_id=event_dict)
@@ -227,6 +228,7 @@ for sub_string in sub_list:
 
     # Save raw with bads attached
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
+    read_raw_fif(raw_fif_file, preload=True)
     raw.info['bads'] = epochs.info['bads']
     raw.save(raw_fif_file, overwrite=True)
 
