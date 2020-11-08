@@ -12,7 +12,10 @@ task = 'study'
 bad_chans = {
 }
 
-### Dictionary of preprocessing options
+### Autoreject parameters
+n_interpolates = np.array([1, 2, 4, 8, 12])
+consensus = np.linspace(0.4, 1.0, 7)
+
 ### Dictionary of preprocessing options
 preprocess_options = {
     'blink_thresh': 150e-6,
@@ -20,12 +23,16 @@ preprocess_options = {
     'lowcutoff': .1, 
     'tmin': -1.7,
     'tmax': 2.7,
-    'baseline': (-.5, 0),
+    'baseline': (-.2, 0),
+    'evoked_tmin': -.2,
+    'evoked_tmax': .6, 
+    'evoked_highcutoff': 20.0, 
     'ica_lowcutoff': 1,
     'ica_tmin': -1.0, 
     'ica_tmax': 2.0,
     'ica_baseline': (None, None)
 }
+
 ### BELOW IS RATHER FIXED ###
 #####---Determine Top Directory---#####
 # This is platform dependent and retrutns a Path class object
@@ -64,6 +71,31 @@ event_dict = {
     'scene': 11,
     'object': 21,
     }
+
+# Define subject list function
+def get_sub_list(data_dir, allow_all=False, is_source=False):
+    # Ask for subject IDs to analyze
+    print('What IDs are being preprocessed?')
+    print('(Enter multiple values separated by a comma; e.g., 101,102)')
+    if allow_all:
+        print('To process all subjects, type all')
+    
+    sub_list = input('Enter IDs: ')
+    
+    if sub_list == 'all' and allow_all:
+        if is_source:
+            sub_list = [x.name for x in data_dir.glob('sub-p3e2s*')]
+        else:
+            sub_list = [x.name for x in data_dir.glob('sub-*')]
+    else:
+        sub_list = sub_list.split(',')
+        if is_source:
+            sub_list = [f'sub-p3e2s{x}' for x in sub_list]
+        else:
+            sub_list = [f'sub-{x}' for x in sub_list]
+
+    sub_list.sort()
+    return sub_list
 
 
 # Functions to read in .mat file
