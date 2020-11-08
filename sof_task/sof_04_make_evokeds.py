@@ -57,6 +57,8 @@ for sub_string in sub_list:
         evokeds[cond].append(evoked)
         these_evokeds.append(evoked)
 
+        # MAKE JSON INFORMATION
+
     scene_diff = mne.combine_evoked(these_evokeds,weights=[1,-1,0]).filter(None,20)
     face_diff = mne.combine_evoked(these_evokeds,weights=[0,-1,1]).filter(None,20)
     rois = {
