@@ -15,6 +15,28 @@ def check_nans(data, nan_policy='zero'):
     return data    
 
 
+        
+    # Load prior marks if they exist (from JSON file)
+    marked_bad = [False] * len(epochs)
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
+    if json_file.is_file():
+        with open(json_file, 'r') as f:
+            marked = json.load(f)['bad_epochs']
+        for x in marked:
+            marked_bad[x]=True
+    
+
+    # Make color index
+    n_channels = len(epochs.info.ch_names)    
+    epoch_colors = list()
+    for i in np.arange(epochs.events.shape[0]):
+        epoch_colors.append([None]*(n_channels-1) + ['k'])
+        if i in blink_inds:
+            epoch_colors[i] = ['b'] * n_channels
+        if reject_log.bad_epochs[i]:
+            epoch_colors[i] = ['m'] * n_channels
+        if marked_bad[i]:
+            epoch_colors[i] = ['g'] * n_channels
 
 import numpy as np
 import matplotlib.pyplot as plt
