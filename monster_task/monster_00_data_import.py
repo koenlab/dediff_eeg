@@ -19,7 +19,9 @@ from mne_bids.copyfiles import copyfile_brainvision
 
 import mne
 
-from monster_config import (bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans)
+from monster_config import (bids_dir, source_dir, deriv_dir, 
+                            event_dict, task, bad_chans,
+                            get_sub_list)
 
 #####---Overwrite BIDS---#####
 overwrite = True
@@ -81,11 +83,11 @@ cols_to_add = ['angle_bin', 'abin_label', 'letter_type',
                'phase', 'resp', 'rt', 'this_angle']
 
 #####---Get Subject List---#####
-for sub in source_dir.glob('sub-*'):
+sub_list = get_sub_list(source_dir, is_source=True, allow_all=True)
+for sub_string in sub_list:
     
     ### SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID
-    sub_string = sub.name
     sub_id = sub_string.replace('sub-','')
     bids_id = sub_id.replace('p3e2s','')
     source_path = source_dir / sub_string

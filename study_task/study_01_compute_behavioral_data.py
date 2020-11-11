@@ -26,16 +26,14 @@ import matplotlib.patches as mpatches
 from matplotlib.ticker import FormatStrFormatter
 from collections import OrderedDict
 
-from study_config import (bids_dir, deriv_dir, task, loadmat)
+from study_config import (bids_dir, deriv_dir, task, 
+                          get_sub_list, loadmat)
 
 ### Overwrite 
 overwrite = False
 
-
-sub_list = [x.name for x in bids_dir.glob('sub-*')]
-sub_list.sort()
-
 #####---Get Subject List---#####
+sub_list = get_sub_list(deriv_dir, allow_all=True)
 for sub_string in sub_list:
 
     ### Get subject information

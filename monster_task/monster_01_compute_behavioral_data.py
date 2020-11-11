@@ -11,16 +11,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
-from monster_config import bids_dir, deriv_dir, task
+from monster_config import (bids_dir, deriv_dir, task,
+                            get_sub_list)
 
 ### Overwrite 
 overwrite = True
 
 #####---Get Subject List---#####
-for sub in bids_dir.glob('sub-*'):
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+for sub_string in sub_list:
 
     ### Get subject information
-    sub_string = sub.name
     sub_id = sub_string.replace('sub-', '')
     out_path = deriv_dir / sub_string 
     out_path.mkdir(parents=True, exist_ok=True)

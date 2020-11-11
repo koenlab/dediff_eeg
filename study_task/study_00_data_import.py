@@ -17,7 +17,9 @@ from mne_bids import BIDSPath, write_raw_bids
 
 import mne
 
-from study_config import (bids_dir, source_dir, deriv_dir, event_dict, task, bad_chans)
+from study_config import (bids_dir, source_dir, deriv_dir, 
+                          event_dict, task, bad_chans,
+                          get_sub_list)
 
 #####---Overwrite BIDS---#####
 overwrite = True
@@ -66,11 +68,11 @@ cols_to_add = ['trial_number', 'image', 'category', 'subcategory', 'study_resp',
                'study_rt', 'study_n_responses', 'study_correct', 'test_resp', 'test_rt']
 
 #####---Get Subject List---#####
-for sub in source_dir.glob('sub-*'):
+sub_list = get_sub_list(source_dir, is_source=True, allow_all=True)
+for sub_string in sub_list:
     
     ### SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
-    sub_string = sub.name
     sub_id = sub_string.replace('sub-','')
     bids_id = sub_id.replace('p3e2s','')
     source_path = source_dir / sub_string
