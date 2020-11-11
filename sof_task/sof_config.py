@@ -16,12 +16,13 @@ bad_chans = {
 }
 
 ### Autoreject parameters
-n_interpolates = np.array([1, 2, 4, 8, 12])
-consensus = np.linspace(0.4, 1.0, 7)
+n_interpolates = np.array([6, 8, 10, 12])
+consensus = np.linspace(0.2, 1.0, 9)
 
 ### Dictionary of preprocessing options
 preprocess_options = {
     'blink_thresh': 150e-6,
+    'ext_val_thresh': 100e-6,
     'resample': 250, 
     'lowcutoff': .1, 
     'tmin': -1.7,
@@ -78,6 +79,12 @@ event_dict = {
     'face/novel': 31,
     'face/1back': 32,
 }
+
+# Report file patterns
+file_patterns = [
+        '*raw.fif.gz',
+        '*cleaned*.fif.gz'
+    ]
 
 # Define subject list function
 def get_sub_list(data_dir, allow_all=False, is_source=False):

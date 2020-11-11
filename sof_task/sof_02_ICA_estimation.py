@@ -22,7 +22,7 @@ from mne import events_from_annotations
 from mne.preprocessing import ICA
 import mne
 
-from autoreject import (AutoReject, Ransac)
+from autoreject import (Ransac, get_rejection_threshold)
 
 from sof_config import (bids_dir, deriv_dir, event_dict, 
                         task, preprocess_options, bv_montage,
@@ -45,8 +45,7 @@ for sub_string in sub_list:
     # Load Raw EEG data from derivatives folder
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw = read_raw_fif(raw_fif_file, preload=True)
-    orig_raw = raw.copy()
-
+    
     # Read events from annotations
     events, event_id = mne.events_from_annotations(raw, event_id=event_dict)
 
@@ -74,7 +73,9 @@ for sub_string in sub_list:
 
     ## Resample events and raw to 250Hz (yes this causes jitter, but it will be minimal)
     raw, events = raw.resample( preprocess_options['resample'], events=events )
-    
+    raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
+    raw.save(raw_fif_file, overwrite=True)
+
     # Save events resampled
     event_file = deriv_path / f'{sub_string}_task-{task}_desc-resamp_eve.txt'
     mne.write_events(event_file, events)
@@ -97,6 +98,7 @@ for sub_string in sub_list:
     # Apply HPF to all channels and a 60Hz Notch filter to eogs
     raw.filter(preprocess_options['ica_lowcutoff'], None, 
                skip_by_annotation=['boundary'])
+    raw.filter(None,30, picks=['eog'])
     raw.notch_filter([60,120], picks=['eog'])
     
     # Make ICA Epochs
@@ -116,11 +118,21 @@ for sub_string in sub_list:
             epochs.info['bads'].append(chan)
     print(f'RANSAC Bad Channels: {ransac.bad_chs_}')
     
-    # Run autoreject
-    ar = AutoReject(n_interpolates, consensus, thresh_method='random_search',
-                    random_state=42, verbose='tqdm', n_jobs=4)
-    ar.fit(epochs)
-    reject_log = ar.get_reject_log(epochs)
+    # Extract epoch data for ease of computation
+    epoch_data = epochs.get_data(picks=['eeg'])
+    
+    # Exclude voltages > +/100 microvolts
+    max_voltage = np.abs(epoch_data).max(axis=2)
+    ext_val_nchan = (np.sum(max_voltage > preprocess_options['ext_val_thresh'], axis=1))
+    ext_val_bad = ext_val_nchan > 8
+    print('Epochs with extreme voltage on more than 8 channels:', ext_val_bad.nonzero()[0])
+    
+    # Exclude epochs based on Global Rejection Threshold with 8 epochs
+    reject = get_rejection_threshold(epochs, ch_types='eeg')
+    p2p_vals = np.abs(epoch_data.max(axis=2) - epoch_data.min(axis=2))
+    p2p_nchan = np.sum(p2p_vals > reject['eeg'], axis=1)
+    p2p_bad = p2p_nchan > 8
+    print('Epochs exceeding global P2P on more than 8 channels:', p2p_bad.nonzero()[0])
     
     # Detect eog at stim onsets
     veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
@@ -129,19 +141,21 @@ for sub_string in sub_list:
     print('Epochs with blink at stim onset:', blink_inds)
     
     # Make color index
-    n_channels = len(raw.info.ch_names)    
+    n_channels = len(epochs.info.ch_names)    
     epoch_colors = list()
     for i in np.arange(epochs.events.shape[0]):
         epoch_colors.append([None]*(n_channels-1) + ['k'])
         if i in blink_inds:
             epoch_colors[i] = ['b'] * n_channels
-        if reject_log.bad_epochs[i]:
+        if p2p_bad[i]:
             epoch_colors[i] = ['m'] * n_channels
+        if ext_val_bad[i]:
+            epoch_colors[i] = ['c'] * n_channels
     
     # Visual inspect
     epochs.plot(n_channels=66, n_epochs=5, block=True,
                     scalings=dict(eeg=150e-6, eog=300e-6), 
-                    epoch_colors=epoch_colors, picks='all')
+                    epoch_colors=epoch_colors, picks=['eeg','eog'])
     
     # Save ICA epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_epo.fif.gz'
@@ -159,8 +173,8 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'FCz',
         'filter': {
-            'lowcutoff': epochs.info['lowcutoff'],
-            'highcutoff': epochs.info['highcutoff'],
+            'lowcutoff': epochs.info['highpass'],
+            'highcutoff': epochs.info['lowpass'],
             'notch': 60.0,
             'Description': 'Notch only applied to EOG channels'
                   },
@@ -209,8 +223,8 @@ for sub_string in sub_list:
             'fit_params': dict(ortho=True, extended=True)
                       },
         'filter': {
-            'lowcutoff': ica.info['lowcutoff'],
-            'highcutoff': ica.info['highcutoff'],
+            'lowcutoff': ica.info['highpass'],
+            'highcutoff': ica.info['lowpass'],
                   },
         'n_components': len(ica.info['chs']),
         'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
@@ -228,7 +242,7 @@ for sub_string in sub_list:
 
     # Save raw with bads attached
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
-    read_raw_fif(raw_fif_file, preload=True)
+    raw = read_raw_fif(raw_fif_file, preload=True)
     raw.info['bads'] = epochs.info['bads']
     raw.save(raw_fif_file, overwrite=True)
 
