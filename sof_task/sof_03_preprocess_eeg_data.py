@@ -90,6 +90,32 @@ for sub_string in sub_list:
     # Baseline to -200 to 0 
     epochs.apply_baseline((-.2,0))
 
+    # Save epochs
+    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-removedICs_epo.fif.gz'
+    epochs.save(epochs_fif_file, overwrite=True)
+
+    # Make JSON
+    json_info = {
+        'Description': 'Epochs with Artifactual ICs removed',
+        'sfreq': epochs.info['sfreq'],
+        'reference': 'average',
+        'filter': {
+            'lowcutoff': epochs.info['highpass'],
+            'highcutoff': epochs.info['lowpass'],
+            'notch': [60.0, 120],
+            'Description': 'Notch only applied to EOG channels'
+                  },
+        'tmin': epochs.times.max(),
+        'tmax': epochs.times.min(),
+        'interpolated_channels': epochs.info['bads'],
+        'metadata': metadata_file.name
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-removedICs_epo.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
+    
+
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
     
