@@ -12,8 +12,8 @@ bad_chans = {
 }
 
 ### Autoreject parameters
-n_interpolates = np.array([1, 2, 4, 8, 12])
-consensus = np.linspace(0.4, 1.0, 7)
+n_interpolates = np.array([6, 8, 10, 12])
+consensus = np.linspace(0.2, 1.0, 9)
 
 ### Dictionary of preprocessing options
 preprocess_options = {
