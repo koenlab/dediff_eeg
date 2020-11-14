@@ -31,9 +31,13 @@ for sub_string in sub_list:
     report._sort_sections=True
 
     # Parse the EEG files in the subjects derivative directory
-    report.parse_folder(deriv_path, pattern=file_patterns, render_bem=False, 
+    report.parse_folder(deriv_path, pattern='*resamp*raw.fif.gz', render_bem=False, 
                         sort_sections=True)
 
+    # Add information about epochs
+    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
+    epochs = mne.read_epochs(epochs_fif_file, preload=True)
+    
     # Save report
     report_file = deriv_dir / f'{sub_string}_task-{task}_report.html'
     report.save(report_file, overwrite=True, open_browser=False)   

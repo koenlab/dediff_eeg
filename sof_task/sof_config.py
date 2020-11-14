@@ -80,12 +80,6 @@ event_dict = {
     'face/1back': 32,
 }
 
-# Report file patterns
-file_patterns = [
-        '*raw.fif.gz',
-        '*cleaned*.fif.gz'
-    ]
-
 # Define subject list function
 def get_sub_list(data_dir, allow_all=False, is_source=False):
     # Ask for subject IDs to analyze
