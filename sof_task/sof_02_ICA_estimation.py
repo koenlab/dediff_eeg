@@ -67,6 +67,7 @@ for sub_string in sub_list:
             event[0] = psensor_onset
             events_adjusted += 1            
     print(f'  {events_adjusted} events were shifted')
+    
             
     ## Remove Photosensor from channels
     raw.drop_channels('Photosensor')
@@ -121,18 +122,23 @@ for sub_string in sub_list:
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
     
+    # Get the number of good channels
+    n_good_channels = len(mne.pick_types(epochs.info, eeg=True, eog=False, exclude='bads'))
+    print(f'# of good channels: {n_good_channels}')
+    n_thresh_channels = (n_good_channels*preprocess_options['perc_good_chans'])
+    
     # Exclude voltages > +/100 microvolts
     max_voltage = np.abs(epoch_data).max(axis=2)
     ext_val_nchan = (np.sum(max_voltage > preprocess_options['ext_val_thresh'], axis=1))
-    ext_val_bad = ext_val_nchan > 8
-    print('Epochs with extreme voltage on more than 8 channels:', ext_val_bad.nonzero()[0])
+    ext_val_bad = ext_val_nchan >= n_thresh_channels
+    print(f'Epochs with extreme voltage on more than {n_thresh_channels} channels:', ext_val_bad.nonzero()[0])
     
     # Exclude epochs based on Global Rejection Threshold with 8 epochs
     reject = get_rejection_threshold(epochs, ch_types='eeg')
     p2p_vals = np.abs(epoch_data.max(axis=2) - epoch_data.min(axis=2))
     p2p_nchan = np.sum(p2p_vals > reject['eeg'], axis=1)
-    p2p_bad = p2p_nchan > 8
-    print('Epochs exceeding global P2P on more than 8 channels:', p2p_bad.nonzero()[0])
+    p2p_bad = p2p_nchan >= n_thresh_channels
+    print(f'Epochs exceeding global P2P on more than {n_thresh_channels} channels:', p2p_bad.nonzero()[0])
     
     # Detect eog at stim onsets
     veog_data = epochs.copy().apply_baseline((None,None)).crop(tmin=-.1, tmax=.1).pick_channels(['VEOG']).get_data()
@@ -241,6 +247,7 @@ for sub_string in sub_list:
     del json_info, json_file
 
     # Save raw with bads attached
+    del raw # just in case
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-resamp_raw.fif.gz'
     raw = read_raw_fif(raw_fif_file, preload=True)
     raw.info['bads'] = epochs.info['bads']
@@ -250,6 +257,10 @@ for sub_string in sub_list:
     json_info = {
         'Description': 'Resampled continuous data',
         'sfreq': raw.info['sfreq'],
+        'filter': {
+            'lowcutoff': raw.info['highpass'],
+            'highcutoff': raw.info['lowpass'],
+                  },
         'reference': 'FCz',
         'bad_channels': raw.info['bads'],
     }

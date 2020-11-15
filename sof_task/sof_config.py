@@ -23,6 +23,7 @@ consensus = np.linspace(0.2, 1.0, 9)
 preprocess_options = {
     'blink_thresh': 150e-6,
     'ext_val_thresh': 100e-6,
+    'perc_good_chans': .125,
     'resample': 250, 
     'lowcutoff': .1, 
     'tmin': -1.7,
@@ -66,6 +67,10 @@ bids_dir.mkdir(parents=True, exist_ok=True)
 deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
 deriv_dir.mkdir(parents=True, exist_ok=True)
 
+### Report directory ###
+report_dir = deriv_dir / 'reports'
+report_dir.mkdir(parents=True, exist_ok=True)
+
 ### BVEF File
 bvef_file = data_dir / 'scripts' / 'brainvision_64.bvef'
 bv_montage = read_custom_montage(bvef_file, head_size=.08)
@@ -104,3 +109,74 @@ def get_sub_list(data_dir, allow_all=False, is_source=False):
 
     sub_list.sort()
     return sub_list
+
+### HTML GENERATORS
+
+from dominate.tags import *
+from mne import pick_types
+from collections import OrderedDict
+
+def make_raw_html(sub, raw):
+    
+    # Initialize table as a list object
+    html = li(_class='raw', id=sub)
+    with html.add(table(_class='table table-hover')):
+        
+        with tbody():
+        
+            # Sampling frequency
+            with tr():
+                th('Sampling Freuency')
+                td(u'{:0.2f} Hz'.format(raw.info['sfreq']))
+            
+            # Get lowpass filter
+            with tr():
+                th('Highpass')
+                td(u'{:0.2f} Hz'.format(raw.info['highpass']))
+            
+            # Get lowpass filter
+            with tr():
+                th('Lowpass')
+                td(u'{:0.2f} Hz'.format(raw.info['lowpass']))
+            
+            # Line Noise Frequency
+            with tr():
+                th('Line Frequency')
+                td('60.00 Hz')
+            
+            # Add in measurement time
+            with tr():
+                th('Measurement Duration')
+                td(u'{:0.2f} seconds'.format(raw._last_time))
+            
+            # Online Reference
+            with tr():
+                th('Reference Channel')
+                td('FCz')  
+            
+            # Number of EEG Channels
+            with tr():
+                th('# of Good EEG Channels')
+                td(u'{:d}'.format(len(pick_types(raw.info, eeg=True))))
+            
+            # Get bad channels
+            if raw.info['bads'] is not None:
+                bads = ', '.join(raw.info['bads'])
+            else:
+                bads = 'None'
+            with tr():
+                th('Interpolated Channels')
+                td(u'{}'.format(bads))
+        
+            # EOG Channels
+            pick_eog = pick_types(raw.info, meg=False, eog=True)
+            if len(pick_eog) > 0:
+                eog = ', '.join(np.array(raw.info['ch_names'])[pick_types(raw.info, eog=True)])
+            else:
+                eog = 'None'
+            with tr():
+                th('EOG Channels')
+                td(u'{}'.format(eog))
+            
+            
+    return html
