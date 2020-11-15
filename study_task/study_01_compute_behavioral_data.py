@@ -30,7 +30,7 @@ from study_config import (bids_dir, deriv_dir, task,
                           get_sub_list, loadmat)
 
 ### Overwrite 
-overwrite = False
+overwrite = True
 
 #####---Get Subject List---#####
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -41,6 +41,8 @@ for sub_string in sub_list:
     sub_id = sub_string.replace('sub-', '')
     out_path = deriv_dir / sub_string 
     out_path.mkdir(parents=True, exist_ok=True)
+    fig_path = out_path / 'figures'
+    fig_path.mkdir(parents=True, exist_ok=True)    
     print(f'Output directory: {out_path}')
     
     # Make figure
@@ -294,8 +296,6 @@ for sub_string in sub_list:
     ax9.set_box_aspect(.625)
     
     # Save plot to figures
-    fig_path = deriv_dir / sub_string / 'figures'
-    fig_path.mkdir(parents=True, exist_ok=True)    
     fig_file = fig_path / f'{sub_string}_task-{task}_beh_performance.png'
     fig.savefig(fig_file, dpi=600)
         
