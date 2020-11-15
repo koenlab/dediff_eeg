@@ -18,6 +18,8 @@ consensus = np.linspace(0.2, 1.0, 9)
 ### Dictionary of preprocessing options
 preprocess_options = {
     'blink_thresh': 150e-6,
+    'ext_val_thresh': 100e-6,
+    'perc_good_chans': .125,
     'resample': 250, 
     'lowcutoff': .1, 
     'tmin': -1.7,
