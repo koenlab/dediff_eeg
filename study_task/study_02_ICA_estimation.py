@@ -183,8 +183,8 @@ for sub_string in sub_list:
             'notch': 60.0,
             'Description': 'Notch only applied to EOG channels'
                   },
-        'tmin': epochs.times.max(),
-        'tmax': epochs.times.min(),
+        'tmin': epochs.times.min(),
+        'tmax': epochs.times.max(),
         'bad_epochs': bad_epochs,
         'bad_channels': epochs.info['bads'],
         'proportion_rejected_epochs': len(bad_epochs)/len(epochs),

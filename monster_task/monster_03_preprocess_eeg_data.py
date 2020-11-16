@@ -105,8 +105,8 @@ for sub_string in sub_list:
             'notch': [60.0, 120],
             'Description': 'Notch only applied to EOG channels'
                   },
-        'tmin': epochs.times.max(),
-        'tmax': epochs.times.min(),
+        'tmin': epochs.times.min(),
+        'tmax': epochs.times.max(),
         'interpolated_channels': epochs.info['bads'],
         'metadata': metadata_file.name
     }
@@ -183,12 +183,12 @@ for sub_string in sub_list:
             'notch': [60.0, 120],
             'Description': 'Notch only applied to EOG channels'
                   },
-        'tmin': epochs.times.max(),
-        'tmax': epochs.times.min(),
+        'tmin': epochs.times.min(),
+        'tmax': epochs.times.max(),
         'bad_epochs': bad_epochs,
         'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
         'interpolated_channels': epochs.info['bads'],
-        'metadata': metadata_file.name
+        'metadata': events_save_file.name
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
     with open(json_file, 'w') as outfile:
