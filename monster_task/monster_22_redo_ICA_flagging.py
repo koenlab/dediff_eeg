@@ -12,7 +12,7 @@ from mne import read_epochs
 from mne.preprocessing import read_ica
 import mne
 
-from sof_config import (bids_dir, deriv_dir, task, get_sub_list)
+from monster_config import (bids_dir, deriv_dir, task, get_sub_list)
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -67,6 +67,6 @@ for sub_string in sub_list:
         json_info['tmin'] = tmin
         json_info['tmax'] = tmax
         if x == 'cleaned':
-            json_info['metadata'] = (deriv_path / f'{sub_string}_task-_desc-cleaned_metadata.tsv').name
+            json_info['metadata'] = (deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv').name
         with open(json_file, 'w') as f:
             json.dump(json_info, f, indent=4)

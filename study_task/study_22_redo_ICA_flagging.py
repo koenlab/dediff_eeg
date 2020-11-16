@@ -12,7 +12,7 @@ from mne import read_epochs
 from mne.preprocessing import read_ica
 import mne
 
-from sof_config import (bids_dir, deriv_dir, task, get_sub_list)
+from study_config import (bids_dir, deriv_dir, task, get_sub_list)
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -53,10 +53,10 @@ for sub_string in sub_list:
     files = ['ica', 'removedICs', 'cleaned']
     for x in files:
         if x == 'ica':
-            tmin, tmax = -1.0, 1.0
+            tmin, tmax = -1.0, 2.0
             ref = 'FCz'
         else:
-            tmin, tmax = -1.7, 1.7
+            tmin, tmax = -1.7, 2.7
             ref = 'avg'
         json_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_desc-{x}_epo.json'
         if not json_file.is_file():
