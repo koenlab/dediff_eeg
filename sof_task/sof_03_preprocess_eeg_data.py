@@ -156,9 +156,19 @@ for sub_string in sub_list:
             epoch_colors[i] = ['c'] * n_channels
             
     # Visual inspect
-    epochs.plot(n_channels=66, n_epochs=5, block=True,
+    tmp = epochs.copy().crop(tmin=preprocess_options['ica_tmin'], tmax=preprocess_options['ica_tmax'])
+    tmp.plot(n_channels=66, n_epochs=5, block=True,
                 scalings=dict(eeg=150e-6, eog=300e-6), 
                 epoch_colors=epoch_colors, picks='all')
+    
+    # Find bad epochs
+    bad_epochs = []
+    for i, epo in enumerate(tmp.drop_log):
+        if len(epo) > 0:
+            bad_epochs.append(i)
+            
+    # Drop bad epochs
+    epochs.drop(bad_epochs, reason='USER')
     
     # Save cleaned epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
