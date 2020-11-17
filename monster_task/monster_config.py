@@ -29,7 +29,7 @@ preprocess_options = {
     'evoked_tmax': .6, 
     'evoked_highcutoff': 20.0, 
     'ica_lowcutoff': 1,
-    'ica_tmin': -1.0, 
+    'ica_tmin': -.5, 
     'ica_tmax': 1.0,
     'ica_baseline': (None, None)
 }
