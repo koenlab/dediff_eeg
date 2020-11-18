@@ -209,13 +209,13 @@ for sub_string in sub_list:
         'reference': 'FCz',
         'filter': {
             'eeg': {
-                'highpass': 30.0,
+                'highpass': epochs.info['highpass'],
                 'lowpass': 'n/a',
                 'notch': 'n/a'
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': epochs.info['lowpass'],
+                'lowpass': 30.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -225,6 +225,11 @@ for sub_string in sub_list:
         'bad_channels': epochs.info['bads'],
         'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
         'metadata': 'n/a',
+        'artifact_detection': {
+            'extreme_value': [int(i) for i in ext_val_bad.nonzero()[0]],
+            'global_p2p': [int(i) for i in p2p_bad.nonzero()[0]],
+            'blink_at_onset': [int(i) for i in blink_inds]
+        }
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_epo.json'
     with open(json_file, 'w') as outfile:
