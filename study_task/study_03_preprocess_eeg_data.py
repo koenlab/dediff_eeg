@@ -106,7 +106,7 @@ for sub_string in sub_list:
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': epochs.info['lowpass'],
+                'lowpass': 30.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -194,7 +194,7 @@ for sub_string in sub_list:
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': epochs.info['lowpass'],
+                'lowpass': 30.0,
                 'notch': [60.0, 120.0]
             }
         },
