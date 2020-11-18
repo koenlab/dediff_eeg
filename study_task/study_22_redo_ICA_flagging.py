@@ -34,7 +34,9 @@ for sub_string in sub_list:
     # Plot ICA
     ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
+    ica.exclude.sort()
     ica.save(ica_file)
+    print(f'ICs Flagged for Removal: {ica.exclude}')    
 
     # Load json file for updating
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_ica.json'
@@ -42,7 +44,6 @@ for sub_string in sub_list:
         json_info = json.load(f)
 
     # Only update description, proportion of flagged components, and glaffed components
-    json_info['Description'] = 'ICA components'
     json_info['flagged_components'] = [int(x) for x in ica.exclude]
     json_info['proportion_components_flagged'] = len(ica.exclude)/len(ica.info['ch_names'])
     
