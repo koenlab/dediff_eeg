@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
+import pickle
 
 from mne.io import read_raw_fif
 from mne import events_from_annotations
@@ -26,7 +27,7 @@ from autoreject import (Ransac, get_rejection_threshold)
 
 from sof_config import (bids_dir, deriv_dir, event_dict, 
                         task, preprocess_options, bv_montage,
-                        n_interpolates, consensus, get_sub_list)
+                        get_sub_list)
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -67,7 +68,6 @@ for sub_string in sub_list:
             event[0] = psensor_onset
             events_adjusted += 1            
     print(f'  {events_adjusted} events were shifted')
-    
             
     ## Remove Photosensor from channels
     raw.drop_channels('Photosensor')
@@ -110,14 +110,43 @@ for sub_string in sub_list:
     epochs.set_montage(bv_montage)
     
     # Autodetect bad channels
-    picks = mne.pick_channels(epochs.info['ch_names'], [], 
-                              exclude=['FT9','FT10','TP9','TP10', 'VEOG', 'HEOG'])
-    ransac = Ransac(verbose=False, n_jobs=4, min_corr=.70, picks=picks)
-    ransac.fit(epochs)
+    ransac = Ransac(verbose=False, n_jobs=4, 
+                    min_corr=.60,unbroken_time=.6)
+    ransac.fit(epochs.copy().filter(None,40))
     if len(ransac.bad_chs_):
         for chan in ransac.bad_chs_:
             epochs.info['bads'].append(chan)
     print(f'RANSAC Bad Channels: {ransac.bad_chs_}')
+    
+    # Save RANSAC
+    ransac_file = deriv_path / f'{sub_string}_task-{task}_ref_FCz_ransac.pkl'
+    with open(ransac_file, 'wb') as f:
+        pickle.dump(ransac, f)
+        
+    # Make RANSAC json
+    json_info = {
+        'Description': 'RANSAC object computed from epoched data',
+        'parameteres': {
+            'unbroken_time': .6,
+            'min_corr': .6,
+            'verbose': False,
+            'n_jobs': 4
+        },
+        'reference': 'FCz',
+        'filter': {
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 30.0,
+                'notch': 'n/a'
+            }
+        },
+        'bad_channels': ransac.bad_chs_,
+        'eeg_file':  (deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_epo.fif.gz').name
+    }
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref_FCz_ransac.json'
+    with open(json_file, 'w') as outfile:
+        json.dump(json_info, outfile, indent=4)
+    del json_info, json_file
     
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
@@ -136,8 +165,8 @@ for sub_string in sub_list:
     # Exclude epochs based on Global Rejection Threshold with 8 epochs
     reject = get_rejection_threshold(epochs, ch_types='eeg')
     p2p_vals = np.abs(epoch_data.max(axis=2) - epoch_data.min(axis=2))
-    p2p_nchan = np.sum(p2p_vals > reject['eeg'], axis=1)
-    p2p_bad = p2p_nchan >= n_thresh_channels
+    p2p_nchan = np.sum(p2p_vals >= reject['eeg'], axis=1)
+    p2p_bad = p2p_nchan > n_thresh_channels
     print(f'Epochs exceeding global P2P on more than {n_thresh_channels} channels:', p2p_bad.nonzero()[0])
     
     # Detect eog at stim onsets
@@ -179,11 +208,17 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'FCz',
         'filter': {
-            'lowcutoff': epochs.info['highpass'],
-            'highcutoff': epochs.info['lowpass'],
-            'notch': 60.0,
-            'Description': 'Notch only applied to EOG channels'
-                  },
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': epochs.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
         'tmin': epochs.times.min(),
         'tmax': epochs.times.max(),
         'bad_epochs': bad_epochs,
@@ -217,6 +252,7 @@ for sub_string in sub_list:
     # Plot all component properties
     ica.plot_components(inst=epochs, reject=None,
                         psd_args=dict(fmax=70))
+    ica.exclude.sort()
     ica.save(ica_file)
 
     # Make a JSON
@@ -229,12 +265,15 @@ for sub_string in sub_list:
             'fit_params': dict(ortho=True, extended=True)
                       },
         'filter': {
-            'lowcutoff': ica.info['highpass'],
-            'highcutoff': ica.info['lowpass'],
-                  },
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            }
+        }, 
         'n_components': len(ica.info['chs']),
         'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
-        'flagged_components': [int(x) for x in ica.exclude],
+        'flagged_components': [int(x) for x in ica.exclude.sort()],
         'eog_scores': {
             'description': 'Correlation with VEOG and HEOG bipolar recordings',
             'veog_scores': {f'comp{i:02d}': float(x) for i, x in enumerate(eog_scores[0])},
@@ -257,10 +296,6 @@ for sub_string in sub_list:
     json_info = {
         'Description': 'Resampled continuous data',
         'sfreq': raw.info['sfreq'],
-        'filter': {
-            'lowcutoff': raw.info['highpass'],
-            'highcutoff': raw.info['lowpass'],
-                  },
         'reference': 'FCz',
         'bad_channels': raw.info['bads'],
     }

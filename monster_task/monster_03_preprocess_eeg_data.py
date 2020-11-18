@@ -13,13 +13,12 @@ import json
 
 from mne.io import read_raw_fif
 from mne.preprocessing import read_ica
-from mne.time_frequency import tfr_morlet, psd_welch
 import mne
 
-from autoreject import  (get_rejection_threshold)
+from autoreject import get_rejection_threshold
 
 from monster_config import (bids_dir, deriv_dir, task, preprocess_options, 
-                        bv_montage, n_interpolates, consensus, get_sub_list)
+                            bv_montage, get_sub_list)
 from monster_config import event_dict as event_id
 
 # Ask for subject IDs to analyze
@@ -100,14 +99,21 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': epochs.info['highpass'],
-            'highcutoff': epochs.info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': epochs.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
         'tmin': epochs.times.min(),
         'tmax': epochs.times.max(),
-        'interpolated_channels': epochs.info['bads'],
+        'bad_epochs': 'n/a',
+        'bad_channels': epochs.info['bads'],
         'metadata': metadata_file.name
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-removedICs_epo.json'
@@ -115,7 +121,6 @@ for sub_string in sub_list:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
     
-
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
     
@@ -175,7 +180,6 @@ for sub_string in sub_list:
     epochs.save(epochs_fif_file, overwrite=True)
     events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv'
     epochs.metadata.to_csv(events_save_file, sep='\t', index=False)
-
     
     # Make JSON
     json_info = {
@@ -183,17 +187,28 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': epochs.info['highpass'],
-            'highcutoff': epochs.info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': epochs.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
         'tmin': epochs.times.min(),
         'tmax': epochs.times.max(),
         'bad_epochs': bad_epochs,
         'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
-        'interpolated_channels': epochs.info['bads'],
-        'metadata': events_save_file.name
+        'bad_channels': epochs.info['bads'],
+        'metadata': events_save_file.name, 
+        'artifact_detection': {
+            'extreme_value': list(ext_val_bad.nonzero()[0]),
+            'global_p2p': list(p2p_bad.nonzero()[0]),
+            'blink_at_onset': list(blink_inds)
+        }
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
     with open(json_file, 'w') as outfile:

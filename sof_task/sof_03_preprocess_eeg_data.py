@@ -13,13 +13,12 @@ import json
 
 from mne.io import read_raw_fif
 from mne.preprocessing import read_ica
-from mne.time_frequency import tfr_morlet, psd_welch
 import mne
 
-from autoreject import  (get_rejection_threshold)
+from autoreject import get_rejection_threshold
 
 from sof_config import (bids_dir, deriv_dir, task, preprocess_options, 
-                        bv_montage, n_interpolates, consensus, get_sub_list)
+                        bv_montage, get_sub_list)
 from sof_config import event_dict as event_id
 
 # Ask for subject IDs to analyze
@@ -100,14 +99,21 @@ for sub_string in sub_list:
         'sfreq': epochs.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': epochs.info['highpass'],
-            'highcutoff': epochs.info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': epochs.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
         'tmin': epochs.times.min(),
         'tmax': epochs.times.max(),
-        'interpolated_channels': epochs.info['bads'],
+        'bad_epochs': 'n/a',
+        'bad_channels': epochs.info['bads'],
         'metadata': metadata_file.name
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-removedICs_epo.json'
@@ -115,7 +121,6 @@ for sub_string in sub_list:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
     
-
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
     
@@ -133,8 +138,8 @@ for sub_string in sub_list:
     # Exclude epochs based on Global Rejection Threshold with 8 epochs
     reject = get_rejection_threshold(epochs, ch_types='eeg')
     p2p_vals = np.abs(epoch_data.max(axis=2) - epoch_data.min(axis=2))
-    p2p_nchan = np.sum(p2p_vals > reject['eeg'], axis=1)
-    p2p_bad = p2p_nchan >= n_thresh_channels
+    p2p_nchan = np.sum(p2p_vals >= reject['eeg'], axis=1)
+    p2p_bad = p2p_nchan > n_thresh_channels
     print(f'Epochs exceeding global P2P on more than {n_thresh_channels} channels:', p2p_bad.nonzero()[0])
     
     # Detect eog at stim onsets
@@ -169,36 +174,41 @@ for sub_string in sub_list:
             
     # Drop bad epochs
     epochs.drop(bad_epochs, reason='USER')
-    
+
     # Save cleaned epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     epochs.save(epochs_fif_file, overwrite=True)
     events_save_file = deriv_path / f'{sub_string}_task-{task}_desc-cleaned_metadata.tsv'
     epochs.metadata.to_csv(events_save_file, sep='\t', index=False)
-
-    # Find bad epochs
-    bad_epochs = []
-    for i, epo in enumerate(epochs.drop_log):
-        if len(epo) > 0:
-            bad_epochs.append(i)
-
+    
     # Make JSON
     json_info = {
         'Description': 'Manually cleaned epochs',
         'sfreq': epochs.info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': epochs.info['highpass'],
-            'highcutoff': epochs.info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
-        'tmin': epochs.times.max(),
-        'tmax': epochs.times.min(),
+            'eeg': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': epochs.info['highpass'],
+                'lowpass': epochs.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
+        'tmin': epochs.times.min(),
+        'tmax': epochs.times.max(),
         'bad_epochs': bad_epochs,
         'proportion_rejected_epochs': len(bad_epochs)/len(epochs),
-        'interpolated_channels': epochs.info['bads'],
-        'metadata': events_save_file.name
+        'bad_channels': epochs.info['bads'],
+        'metadata': events_save_file.name, 
+        'artifact_detection': {
+            'extreme_value': list(ext_val_bad.nonzero()[0]),
+            'global_p2p': list(p2p_bad.nonzero()[0]),
+            'blink_at_onset': list(blink_inds)
+        }
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
     with open(json_file, 'w') as outfile:
