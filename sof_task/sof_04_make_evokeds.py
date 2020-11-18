@@ -38,7 +38,7 @@ for sub_string in sub_list:
     evokeds = []
     for cond in ['scene','object','face']:
         query = f"category == '{cond}' and repeat==1 and n_responses==0"
-        evoked = epochs[query].crop(preprocess_options['evoked_tmin'], preprocess_options['evoked_tmax']).average()
+        evoked = epochs[query].average()
         evoked.comment = cond
         evokeds.append(evoked)
         
@@ -60,6 +60,12 @@ for sub_string in sub_list:
         evoked.comment = contrast
         evokeds.append(evoked)
     
+    # Make original evokeds
+    evokeds_copy = [x.copy() for x in evokeds]
+    
+    # Crop evokeds
+    evokeds = [x.crop(preprocess_options['evoked_tmin'], preprocess_options['evoked_tmax']) for x in evokeds]
+    
     # Write evoked file
     evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-none_ave.fif.gz'
     mne.write_evokeds(evoked_fif_file, evokeds)
@@ -70,23 +76,32 @@ for sub_string in sub_list:
         'sfreq': evokeds[0].info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': evokeds[0].info['highpass'],
-            'highcutoff': evokeds[0].info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
-        'tmin': evokeds[0].times.max(),
-        'tmax': evokeds[0].times.min(),
-        'evoked_objects': {x.comment:i for i, x in enumerate(evokeds)}
+            'eeg': {
+                'highpass': evokeds[0].info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': evokeds[0].info['highpass'],
+                'lowpass': 30.0,
+                'notch': [60.0, 120.0]
+            }
+        },
+        'tmin': evokeds[0].times.min(),
+        'tmax': evokeds[0].times.max(),
+        'evoked_objects': {x.comment:i for i, x in enumerate(evokeds)},
+        'n_avg': {x.comment:x.nave for x in evokeds}
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-none_ave.json'
     with open(json_file, 'w') as outfile:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
     
-    # Apply 20Hz LPF
-    [x.filter(None,20, picks=['eeg']) for x in evokeds]
-    
+    # Apply 20Hz LPF then crop
+    evokeds = evokeds_copy.copy()
+    evokeds = [x.filter(None,20, picks=['eeg']) for x in evokeds]
+    evokeds = [x.crop(preprocess_options['evoked_tmin'], preprocess_options['evoked_tmax']) for x in evokeds]
+   
     # Write evoked file
     evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-20_ave.fif.gz'
     mne.write_evokeds(evoked_fif_file, evokeds)
@@ -97,14 +112,21 @@ for sub_string in sub_list:
         'sfreq': evokeds[0].info['sfreq'],
         'reference': 'average',
         'filter': {
-            'lowcutoff': evokeds[0].info['highpass'],
-            'highcutoff': evokeds[0].info['lowpass'],
-            'notch': [60.0, 120],
-            'Description': 'Notch only applied to EOG channels'
-                  },
+            'eeg': {
+                'highpass': evoked.info['highpass'],
+                'lowpass': 'n/a',
+                'notch': 'n/a'
+            },
+            'eog': {
+                'highpass': evoked.info['highpass'],
+                'lowpass': evoked.info['lowpass'],
+                'notch': [60.0, 120.0]
+            }
+        },
         'tmin': evokeds[0].times.max(),
         'tmax': evokeds[0].times.min(),
-        'evoked_objects': {x.comment:i for i, x in enumerate(evokeds)}
+        'evoked_objects': {x.comment:i for i, x in enumerate(evokeds)},
+        'n_avg': {x.comment:x.nave for x in evokeds}
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-20_ave.json'
     with open(json_file, 'w') as outfile:
