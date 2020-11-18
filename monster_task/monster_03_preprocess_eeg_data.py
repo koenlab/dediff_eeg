@@ -205,9 +205,9 @@ for sub_string in sub_list:
         'bad_channels': epochs.info['bads'],
         'metadata': events_save_file.name, 
         'artifact_detection': {
-            'extreme_value': list(ext_val_bad.nonzero()[0]),
-            'global_p2p': list(p2p_bad.nonzero()[0]),
-            'blink_at_onset': list(blink_inds)
+            'extreme_value': [int(i) for i in ext_val_bad.nonzero()[0]],
+            'global_p2p': [int(i) for i in p2p_bad.nonzero()[0]],
+            'blink_at_onset': [int(i) for i in blink_inds]
         }
     }
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
