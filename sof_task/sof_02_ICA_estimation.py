@@ -245,6 +245,7 @@ for sub_string in sub_list:
     # Save ICA
     ica_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-ica_ica.fif.gz'
     ica.save(ica_file)
+    print(f'ICs Flagged for Removal: {ica.exclude}')
     
     # Find EOG artifacts
     eog_inds, eog_scores = ica.find_bads_eog(raw)
