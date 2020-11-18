@@ -215,7 +215,7 @@ for sub_string in sub_list:
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': epochs.info['lowpass'],
+                'lowpass': 30.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -254,6 +254,7 @@ for sub_string in sub_list:
                         psd_args=dict(fmax=70))
     ica.exclude.sort()
     ica.save(ica_file)
+    print(f'ICs Flagged for Removal: {ica.exclude}')
 
     # Make a JSON
     json_info = {
@@ -273,7 +274,7 @@ for sub_string in sub_list:
         }, 
         'n_components': len(ica.info['chs']),
         'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
-        'flagged_components': [int(x) for x in ica.exclude.sort()],
+        'flagged_components': [int(x) for x in ica.exclude],
         'eog_scores': {
             'description': 'Correlation with VEOG and HEOG bipolar recordings',
             'veog_scores': {f'comp{i:02d}': float(x) for i, x in enumerate(eog_scores[0])},

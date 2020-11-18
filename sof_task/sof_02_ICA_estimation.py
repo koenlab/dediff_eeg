@@ -209,7 +209,7 @@ for sub_string in sub_list:
         'reference': 'FCz',
         'filter': {
             'eeg': {
-                'highpass': epochs.info['highpass'],
+                'highpass': 30.0,
                 'lowpass': 'n/a',
                 'notch': 'n/a'
             },
@@ -273,7 +273,7 @@ for sub_string in sub_list:
         }, 
         'n_components': len(ica.info['chs']),
         'proportion_components_flagged': len(ica.exclude)/len(ica.info['ch_names']),
-        'flagged_components': [int(x) for x in ica.exclude.sort()],
+        'flagged_components': [int(x) for x in ica.exclude],
         'eog_scores': {
             'description': 'Correlation with VEOG and HEOG bipolar recordings',
             'veog_scores': {f'comp{i:02d}': float(x) for i, x in enumerate(eog_scores[0])},
