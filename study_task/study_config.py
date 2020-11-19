@@ -24,7 +24,7 @@ preprocess_options = {
     'resample': 250, 
     'highpass': .1, 
     'tmin': -1.0,
-    'tmax': 2.o,
+    'tmax': 2.0,
     'baseline': (-.4, 0),
     'evoked_tmin': -.4,
     'evoked_tmax': 2.0, 
