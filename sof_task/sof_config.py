@@ -23,18 +23,16 @@ consensus = np.linspace(0.2, 1.0, 9)
 preprocess_options = {
     'blink_thresh': 150e-6,
     'ext_val_thresh': 100e-6,
-    'perc_good_chans': .125,
+    'perc_good_chans': .10,
     'resample': 250, 
-    'lowcutoff': .1, 
-    'tmin': -1.7,
-    'tmax': 1.7,
+    'highpass': .1, 
+    'tmin': -1.0,
+    'tmax': 1.0,
     'baseline': (-.2, 0),
     'evoked_tmin': -.2,
     'evoked_tmax': .6, 
-    'evoked_highcutoff': 20.0, 
-    'ica_lowcutoff': 1,
-    'ica_tmin': -1.0, 
-    'ica_tmax': 1.0,
+    'evoked_lowpass': 20.0, 
+    'ica_highpass': 1,
     'ica_baseline': (None, None)
 }
 
@@ -115,48 +113,50 @@ def get_sub_list(data_dir, allow_all=False, is_source=False):
 from dominate.tags import *
 from mne import pick_types
 from collections import OrderedDict
+import json
 
 def make_raw_html(sub, raw):
     
     # Initialize table as a list object
     html = li(_class='raw', id=sub)
+    html.add(h4(''))
     with html.add(table(_class='table table-hover')):
         
         with tbody():
         
             # Sampling frequency
             with tr():
-                th('Sampling Freuency')
+                th(u'Sampling Freuency')
                 td(u'{:0.2f} Hz'.format(raw.info['sfreq']))
             
             # Get lowpass filter
             with tr():
-                th('Highpass')
+                th(u'Highpass')
                 td(u'{:0.2f} Hz'.format(raw.info['highpass']))
             
             # Get lowpass filter
             with tr():
-                th('Lowpass')
+                th(u'Lowpass')
                 td(u'{:0.2f} Hz'.format(raw.info['lowpass']))
             
             # Line Noise Frequency
             with tr():
-                th('Line Frequency')
-                td('60.00 Hz')
+                th(u'Line Frequency')
+                td(u'60.00 Hz')
             
             # Add in measurement time
             with tr():
-                th('Measurement Duration')
+                th(u'Measurement Duration')
                 td(u'{:0.2f} seconds'.format(raw._last_time))
             
             # Online Reference
             with tr():
-                th('Reference Channel')
-                td('FCz')  
+                th(u'Reference Channel')
+                td(u'FCz')  
             
             # Number of EEG Channels
             with tr():
-                th('# of Good EEG Channels')
+                th(u'# of Good EEG Channels')
                 td(u'{:d}'.format(len(pick_types(raw.info, eeg=True))))
             
             # Get bad channels
@@ -165,7 +165,7 @@ def make_raw_html(sub, raw):
             else:
                 bads = 'None'
             with tr():
-                th('Interpolated Channels')
+                th(u'Interpolated Channels')
                 td(u'{}'.format(bads))
         
             # EOG Channels
@@ -175,8 +175,65 @@ def make_raw_html(sub, raw):
             else:
                 eog = 'None'
             with tr():
-                th('EOG Channels')
+                th(u'EOG Channels')
                 td(u'{}'.format(eog))
             
+    return html
+
+def make_epochs_html(sub, json_file, epochs):
+    
+    # Load json data
+    with open(json_file, 'r') as f:
+        info = json.load(f)
+    
+    # Initialize table as a list object
+    html = div(style='margin-left: 16.666666666666664%')
+    with html.add(li(_class=u'raw', id='epochstable')):
+        with table(_class=u'table table-hover'):
+            with tbody():
+            
+                # Sampling frequency
+                with tr():
+                    th(u'Sampling Freuency')
+                    td(u'{:0.2f} Hz'.format(info['sfreq']))
+                
+                # Get lowpass filter
+                with tr():
+                    th(u'Highpass')
+                    td(u'{:0.2f} Hz'.format(epochs.info['highpass']))
+                
+                # Get lowpass filter
+                with tr():
+                    th(u'Lowpass')
+                    td(u'{:0.2f} Hz'.format(epochs.info['lowpass']))
+                
+                # Line Noise Frequency
+                with tr():
+                    th(u'Line Frequency')
+                    td(u'60.00 Hz')
+                
+                # Online Reference
+                with tr():
+                    th(u'Reference Channel')
+                    td(u'{}'.format(info['reference']))
+                
+                # Get bad channels
+                if info['bad_channels'] is not None:
+                    bads = ', '.join(info['bad_channels'])
+                else:
+                    bads = 'None'
+                with tr():
+                    th(u'Interpolated Channels')
+                    td(u'{}'.format(bads))
+
+                # Get number of rejected epochs
+                with tr():
+                    th(u'# of Epochs Rejected')
+                    td(u'{}'.format(len(info['bad_epochs'])))
+                
+                # Get proportion of bad epochs
+                with tr():
+                    th(u'Percent Epochs Rejection')
+                    td(u'{:0.2f}%'.format(info['proportion_rejected_epochs']*100))
             
     return html
