@@ -97,15 +97,15 @@ for sub_string in sub_list:
 
     ### Step 2: Estimate ICA
     # Apply HPF to all channels and a 60Hz Notch filter to eogs
-    raw.filter(preprocess_options['ica_lowcutoff'], None, 
+    raw.filter(preprocess_options['ica_highpass'], None, 
                skip_by_annotation=['boundary'])
-    raw.filter(None,30, picks=['eog'])
+    raw.filter(None,40, picks=['eog'])
     raw.notch_filter([60,120], picks=['eog'])
     
     # Make ICA Epochs
     epochs = mne.Epochs(raw, events, event_id=event_id, 
-                        tmin=preprocess_options['ica_tmin'], 
-                        tmax=preprocess_options['ica_tmax'], 
+                        tmin=preprocess_options['tmin'], 
+                        tmax=preprocess_options['tmax'], 
                         baseline=(None,None), reject=None, preload=True)
     epochs.set_montage(bv_montage)
     
@@ -136,7 +136,7 @@ for sub_string in sub_list:
         'filter': {
             'eeg': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 30.0,
+                'lowpass': 40.0,
                 'notch': 'n/a'
             }
         },
@@ -210,12 +210,12 @@ for sub_string in sub_list:
         'filter': {
             'eeg': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 'n/a',
+                'lowpass': epochs.info['lowpass'],
                 'notch': 'n/a'
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 30.0,
+                'lowpass': 40.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -260,7 +260,7 @@ for sub_string in sub_list:
     ica.exclude.sort()
     ica.save(ica_file)
     print(f'ICs Flagged for Removal: {ica.exclude}')
-
+    
     # Make a JSON
     json_info = {
         'Description': 'ICA components',

@@ -18,7 +18,7 @@ import mne
 from autoreject import get_rejection_threshold
 
 from monster_config import (bids_dir, deriv_dir, task, preprocess_options, 
-                            bv_montage, get_sub_list)
+                        bv_montage, get_sub_list)
 from monster_config import event_dict as event_id
 
 # Ask for subject IDs to analyze
@@ -59,9 +59,9 @@ for sub_string in sub_list:
     ica = read_ica(ica_file)
 
     # High Pass Filter raw and make epochs
-    raw.filter(preprocess_options['lowcutoff'], None, 
+    raw.filter(preprocess_options['highpass'], None, 
                skip_by_annotation=['boundary'])
-    raw.filter(None,30, picks=['eog'])
+    raw.filter(None,40, picks=['eog'])
     raw.notch_filter([60,120], picks=['eog'])
     
     # Make Epochs from raw
@@ -101,12 +101,12 @@ for sub_string in sub_list:
         'filter': {
             'eeg': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 'n/a',
+                'lowpass': epochs.info['lowpass'],
                 'notch': 'n/a'
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 30.0,
+                'lowpass': 40.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -161,19 +161,15 @@ for sub_string in sub_list:
             epoch_colors[i] = ['c'] * n_channels
             
     # Visual inspect
-    tmp = epochs.copy().crop(tmin=preprocess_options['ica_tmin'], tmax=preprocess_options['ica_tmax'])
-    tmp.plot(n_channels=66, n_epochs=5, block=True,
+    epochs.plot(n_channels=66, n_epochs=5, block=True,
                 scalings=dict(eeg=150e-6, eog=300e-6), 
                 epoch_colors=epoch_colors, picks='all')
     
     # Find bad epochs
     bad_epochs = []
-    for i, epo in enumerate(tmp.drop_log):
+    for i, epo in enumerate(epochs.drop_log):
         if len(epo) > 0:
             bad_epochs.append(i)
-            
-    # Drop bad epochs
-    epochs.drop(bad_epochs, reason='USER')
 
     # Save cleaned epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
@@ -189,12 +185,12 @@ for sub_string in sub_list:
         'filter': {
             'eeg': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 'n/a',
+                'lowpass': epochs.info['lowpass'],
                 'notch': 'n/a'
             },
             'eog': {
                 'highpass': epochs.info['highpass'],
-                'lowpass': 30.0,
+                'lowpass': 40.0,
                 'notch': [60.0, 120.0]
             }
         },
