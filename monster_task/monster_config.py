@@ -19,18 +19,16 @@ consensus = np.linspace(0.2, 1.0, 9)
 preprocess_options = {
     'blink_thresh': 150e-6,
     'ext_val_thresh': 100e-6,
-    'perc_good_chans': .125,
+    'perc_good_chans': .10,
     'resample': 250, 
-    'lowcutoff': .1, 
-    'tmin': -1.7,
-    'tmax': 1.7,
+    'highpass': .1, 
+    'tmin': -.5,
+    'tmax': 1.0,
     'baseline': (-.2, 0),
     'evoked_tmin': -.2,
     'evoked_tmax': .6, 
     'evoked_highcutoff': 20.0, 
     'ica_lowcutoff': 1,
-    'ica_tmin': -.5, 
-    'ica_tmax': 1.0,
     'ica_baseline': (None, None)
 }
 
