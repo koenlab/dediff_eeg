@@ -172,7 +172,7 @@ for sub_string in sub_list:
     if events.shape[0]*2 == events_data.shape[0]:
         events_data.drop(index=np.arange(1,events_data.shape[0]+1, step=2), 
                         inplace=True)
-    events_data.reset_index()
+    events_data.reset_index(inplace=True)
 
     # Add new columnas as "n/a" values
     events_data[cols_to_add] = 'n/a'
