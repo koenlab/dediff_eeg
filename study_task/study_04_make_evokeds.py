@@ -40,23 +40,10 @@ for sub_string in sub_list:
         
         ### STEP 1: Load manually cleaned epochs
         # Read in Cleaned Epochs
-        epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
+        epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_desc-cleaned_epo.fif.gz'
         if not epochs_fif_file.is_file():
             continue
         epochs = read_epochs(epochs_fif_file)
-
-        # Set Mastoid reference if needed
-        if ref == 'mastoids':
-            epochs.set_eeg_reference(ref_channels=['TP9','TP10'])
-            epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.fif.gz'
-            epochs.save(epochs_fif_file, overwrite=True)
-            json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
-            with open(json_file,'r') as f:
-                json_info = json.load(f)
-            json_info['reference'] = ref_json
-            json_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.json'
-            with open(json_file, 'w') as outfile: 
-                json.dump(json_info, outfile, indent=4)
         
         ### Step 2: Make evokeds for relevant conditions
         evokeds = []

@@ -40,23 +40,10 @@ for sub_string in sub_list:
     
         ### STEP 1: Load manually cleaned epochs
         # Read in Cleaned Epochs
-        epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
+        epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_desc-cleaned_epo.fif.gz'
         if not epochs_fif_file.is_file():
             continue
         epochs = read_epochs(epochs_fif_file)
-
-        # Set Mastoid reference if needed
-        if ref == 'mastoids':
-            epochs.set_eeg_reference(ref_channels=['TP9','TP10'])
-            epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.fif.gz'
-            epochs.save(epochs_fif_file, overwrite=True)
-            json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
-            with open(json_file,'r') as f:
-                json_info = json.load(f)
-            json_info['reference'] = ref_json
-            json_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.json'
-            with open(json_file, 'w') as outfile: 
-                json.dump(json_info, outfile, indent=4)
                 
         ### Step 2: Make evokeds for relevant conditions
         evokeds = []
@@ -102,16 +89,16 @@ for sub_string in sub_list:
         evokeds = [x.crop(tmin=tmin,tmax=tmax) for x in evokeds]
         evokeds_filt = [x.crop(tmin=tmin,tmax=tmax) for x in evokeds_filt]
         
-        ### Step 5: write evokeds
+         ### Step 5: write evokeds
         # Write evoked file
-        evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-none_ave.fif.gz'
+        evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_lpf-none_ave.fif.gz'
         mne.write_evokeds(evoked_fif_file, evokeds)
         
         # Make JSON
         json_info = {
             'Description': 'Evoked data with no additional filtering',
             'sfreq': evokeds[0].info['sfreq'],
-            'reference': 'average',
+            'reference': ref_json,
             'filter': {
                 'eeg': {
                     'highpass': evokeds[0].info['highpass'],
@@ -129,20 +116,20 @@ for sub_string in sub_list:
             'evoked_objects': evokeds_key,
             'n_avg': {x.comment:x.nave for x in evokeds}
         }
-        json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-none_ave.json'
+        json_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_lpf-none_ave.json'
         with open(json_file, 'w') as outfile:
             json.dump(json_info, outfile, indent=4)
         del json_info, json_file
         
         # Write evoked file with filtered data
-        evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-20_ave.fif.gz'
+        evoked_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_lpf-20_ave.fif.gz'
         mne.write_evokeds(evoked_fif_file, evokeds_filt)
         
         # Make JSON
         json_info = {
             'Description': 'Evoked data with Low-Pass Filter',
             'sfreq': evokeds_filt[0].info['sfreq'],
-            'reference': 'average',
+            'reference': ref_json,
             'filter': {
                 'eeg': {
                     'highpass': evokeds_filt[0].info['highpass'],
@@ -160,7 +147,7 @@ for sub_string in sub_list:
             'evoked_objects': evokeds_key,
             'n_avg': {x.comment:x.nave for x in evokeds_filt}
         }
-        json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_lpf-20_ave.json'
+        json_file = deriv_path / f'{sub_string}_task-{task}_ref-{ref}_lpf-20_ave.json'
         with open(json_file, 'w') as outfile:
             json.dump(json_info, outfile, indent=4)
         del json_info, json_file
