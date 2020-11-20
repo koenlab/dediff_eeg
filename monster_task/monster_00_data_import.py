@@ -208,10 +208,19 @@ for sub_string in sub_list:
     if events.shape[0]*2 == events_data.shape[0]:
         events_data.drop(index=np.arange(1,events_data.shape[0]+1, step=2), 
                         inplace=True)
-    events_data.reset_index()
+    events_data.reset_index(inplace=True)
 
     # Add new columns from beh_data
-    events_data[cols_to_add] = beh_data[cols_to_add]
+    events_data[cols_to_add] = 'n/a'
+    
+    # Update with values
+    counter = 0 # Keep track of current row in beh_data
+    for index, row in events_data.iterrows():
+        if row['trial_type'] != 'boundary':
+            this_trial = beh_data.iloc[counter]
+            for col in cols_to_add:
+                events_data.at[index, col] = this_trial[col]
+            counter += 1
     
     # Overwrite *events.tsv
     events_data.to_csv(bids_path.fpath, sep='\t', index=False)
