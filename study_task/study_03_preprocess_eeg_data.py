@@ -210,5 +210,15 @@ for sub_string in sub_list:
     with open(json_file, 'w') as outfile:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
-
+    
+    # Make epochs with mastoid reference and save
+    epochs.set_eeg_reference(ref_channels=['TP9','TP10'])
+    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.fif.gz'
+    epochs.save(epochs_fif_file, overwrite=True)
+    
+    # Save json with mastoid reference
+    json_info['reference'] = 'mastoids'
+    json_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.json'
+    with open(json_file, 'w') as outfile: 
+        json.dump(json_info, outfile, indent=4)
     
