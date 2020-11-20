@@ -78,12 +78,12 @@ for sub_string in sub_list:
         'filter': {
             'eeg': {
                 'highpass': evokeds[0].info['highpass'],
-                'lowpass': 'n/a',
+                'lowpass': evokeds[0].info['lowpass'],
                 'notch': 'n/a'
             },
             'eog': {
                 'highpass': evokeds[0].info['highpass'],
-                'lowpass': 30.0,
+                'lowpass': 40.0,
                 'notch': [60.0, 120.0]
             }
         },
@@ -123,8 +123,8 @@ for sub_string in sub_list:
                 'notch': [60.0, 120.0]
             }
         },
-        'tmin': evokeds[0].times.max(),
-        'tmax': evokeds[0].times.min(),
+        'tmin': evokeds[0].times.min(),
+        'tmax': evokeds[0].times.max(),
         'evoked_objects': {x.comment:i for i, x in enumerate(evokeds)},
         'n_avg': {x.comment:x.nave for x in evokeds}
     }
