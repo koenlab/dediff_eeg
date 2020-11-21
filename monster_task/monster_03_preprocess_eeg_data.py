@@ -209,7 +209,6 @@ for sub_string in sub_list:
     json_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.json'
     with open(json_file, 'w') as outfile:
         json.dump(json_info, outfile, indent=4)
-    del json_info, json_file
     
     # Make epochs with mastoid reference and save
     epochs.set_eeg_reference(ref_channels=['TP9','TP10'])
