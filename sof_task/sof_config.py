@@ -69,6 +69,10 @@ deriv_dir.mkdir(parents=True, exist_ok=True)
 report_dir = deriv_dir / 'reports'
 report_dir.mkdir(parents=True, exist_ok=True)
 
+### Analysis Directory
+analysis_dir = data_dir / 'analyses' / f'task-{task}'
+analysis_dir.mkdir(parents=True, exist_ok=True)
+
 ### BVEF File
 bvef_file = data_dir / 'scripts' / 'brainvision_64.bvef'
 bv_montage = read_custom_montage(bvef_file, head_size=.08)
@@ -108,67 +112,3 @@ def get_sub_list(data_dir, allow_all=False, is_source=False):
     sub_list.sort()
     return sub_list
 
-### HTML GENERATORS
-
-from dominate.tags import *
-from mne import pick_types
-from collections import OrderedDict
-import json
-
-def make_epochs_html(sub, json_file, epochs):
-    
-    # Load json data
-    with open(json_file, 'r') as f:
-        info = json.load(f)
-    
-    # Initialize table as a list object
-    html = div(style='margin-left: 16.666666666666664%')
-    with html.add(li(_class=u'raw', id='epochstable')):
-        with table(_class=u'table table-hover'):
-            with tbody():
-            
-                # Sampling frequency
-                with tr():
-                    th(u'Sampling Freuency')
-                    td(u'{:0.2f} Hz'.format(info['sfreq']))
-                
-                # Get lowpass filter
-                with tr():
-                    th(u'Highpass')
-                    td(u'{:0.2f} Hz'.format(epochs.info['highpass']))
-                
-                # Get lowpass filter
-                with tr():
-                    th(u'Lowpass')
-                    td(u'{:0.2f} Hz'.format(epochs.info['lowpass']))
-                
-                # Line Noise Frequency
-                with tr():
-                    th(u'Line Frequency')
-                    td(u'60.00 Hz')
-                
-                # Online Reference
-                with tr():
-                    th(u'Reference Channel')
-                    td(u'{}'.format(info['reference']))
-                
-                # Get bad channels
-                if info['bad_channels'] is not None:
-                    bads = ', '.join(info['bad_channels'])
-                else:
-                    bads = 'None'
-                with tr():
-                    th(u'Interpolated Channels')
-                    td(u'{}'.format(bads))
-
-                # Get number of rejected epochs
-                with tr():
-                    th(u'# of Epochs Rejected')
-                    td(u'{}'.format(len(info['bad_epochs'])))
-                
-                # Get proportion of bad epochs
-                with tr():
-                    th(u'Percent Epochs Rejection')
-                    td(u'{:0.2f}%'.format(info['proportion_rejected_epochs']*100))
-            
-    return html

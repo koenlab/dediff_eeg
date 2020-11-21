@@ -62,6 +62,10 @@ bids_dir.mkdir(parents=True, exist_ok=True)
 deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
 deriv_dir.mkdir(parents=True, exist_ok=True)
 
+### Analysis Directory
+analysis_dir = data_dir / 'analyses' / f'task-{task}'
+analysis_dir.mkdir(parents=True, exist_ok=True)
+
 ### BVEF File
 bvef_file = data_dir / 'scripts' / 'brainvision_64.bvef'
 bv_montage = read_custom_montage(bvef_file, head_size=.08)
