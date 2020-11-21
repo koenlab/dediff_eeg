@@ -65,7 +65,8 @@ for sub_string in sub_list:
         ### Step 3: Make difference waves    
         # Make contrast list
         contrasts = {
-            'scene-object': dict(conds=['scene','object'],weights=[1,-1]),
+            'repeat-novel': dict(conds=['repeat','novel'], weights=[1,-1]),
+            'scene-object': dict(conds=['scene','object'], weights=[1,-1]),
             'face-object': dict(conds=['face','object'], weights=[1,-1]),
             'scene-other': dict(conds=['scene','object','face'], weights=[1,-.5,-.5]),
             'face-other': dict(conds=['face','object','scene'], weights=[1,-.5,-.5])
