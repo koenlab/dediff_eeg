@@ -105,6 +105,13 @@ for sub_string in sub_list:
                                eog=['VEOG','HEOG'])
     raw.anonymize(daysback=anonymize['daysback'])
 
+    # Fix channel order for sub-121 (swap VEOG and HEOG)
+    if bids_id == '121':
+        ch_names = raw.copy().info['ch_names']
+        ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
+        raw = raw.reorder_channels(ch_names)
+        raw.rename_channels(dict(VEOG='HEOG',HEOG='VEOG'))
+    
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
     
