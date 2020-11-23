@@ -236,7 +236,7 @@ for sub_string in sub_list:
     fig2 = plot_compare_evokeds(these_evokeds, title='Scene, Object, and Face Novel Trials - Left Hemisphere',
                                 show=False, show_sensors=True,
                                 picks=['TP7','P7','PO7'], combine='mean')
-    fig3 = plot_compare_evokeds(these_evokeds, title='Scene, Object, and Face Novel Trials - Left Hemisphere',
+    fig3 = plot_compare_evokeds(these_evokeds, title='Scene, Object, and Face Novel Trials - Right Hemisphere',
                                 show=False, show_sensors=True,
                                 picks=['TP8','P8','PO8'], combine='mean')
     captions = [
@@ -257,7 +257,7 @@ for sub_string in sub_list:
     fig2 = plot_compare_evokeds(these_evokeds, title='Difference Waves (vs. object) - Left Hemisphere',
                                 show=False, show_sensors=True,
                                 picks=['TP7','P7','PO7'], combine='mean')
-    fig3 = plot_compare_evokeds(these_evokeds, title='Difference Waves (vs. object) - Left Hemisphere',
+    fig3 = plot_compare_evokeds(these_evokeds, title='Difference Waves (vs. object) - Right Hemisphere',
                                 show=False, show_sensors=True,
                                 picks=['TP8','P8','PO8'], combine='mean')
     captions = [
