@@ -161,8 +161,8 @@ for sub_string in sub_list:
             epoch_colors[i] = ['c'] * n_channels
             
     # Visual inspect
-    epochs.plot(n_channels=66, n_epochs=5, block=True,
-                scalings=dict(eeg=150e-6, eog=300e-6), 
+    epochs.plot(n_channels=66, n_epochs=4, block=True,
+                scalings=dict(eeg=100e-6, eog=300e-6), 
                 epoch_colors=epoch_colors, picks='all')
     
     # Find bad epochs
