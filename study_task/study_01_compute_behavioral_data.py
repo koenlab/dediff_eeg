@@ -97,18 +97,14 @@ for sub_string in sub_list:
     query = '((item_type=="old" and study_n_responses==1) or (item_type=="new")) and test_n_responses==1'
     
     # Calculate trial counts 
-    counts = beh_data.query(query).groupby(group_by)['test_resp'].value_counts(sort=False)
-    counts = counts.unstack('test_resp')
-    if counts.shape[1] != 6:
-        for cbin in [1,2,3,4,5,6]:
-            if cbin not in counts.columns.values:
-                counts[cbin] = np.nan
-    counts.reindex(sorted(counts.columns), axis=1)
-    counts = counts.iloc[:, ::-1] # Reverse column order
-    counts.columns = [str(x) for x in np.arange(6,0,-1)]
-    counts.fillna(0.0, inplace=True)
-    counts.sort_index(level='category',ascending=False, inplace=True)
-    assert(counts.shape[1]==6)
+    counts = {}
+    for r in [6,5,4,3,2,1]:
+        counts[r] = {}
+        for c in ['scene', 'object']:
+            for t in ['old', 'new']:
+                query = f"test_resp=={float(r)} and category=='{c}' and item_type=='{t}'"
+                counts[r][(c,t)] = beh_data.query(query).shape[0] # Get the number of rows as a count
+    counts = pd.DataFrame(counts)            
     
     # Make the table for trial counts
     colLabels = [f'{x}' for x in counts.columns.to_flat_index()]
