@@ -171,6 +171,12 @@ for sub_string in sub_list:
         if len(epo) > 0:
             bad_epochs.append(i)
 
+    # Interpolate channels if needed, and set new montage to bv_montage 
+    if len(epochs.info['bads'])>0:
+        epochs.interpolate_bads()
+    else:
+        print('No channels were interpolated')
+
     # Save cleaned epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     epochs.save(epochs_fif_file, overwrite=True)
