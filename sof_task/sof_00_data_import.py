@@ -91,13 +91,14 @@ for sub_string in sub_list:
                                eog=['VEOG','HEOG'])
     raw.anonymize(daysback=anonymize['daysback'])
 
+    #* HANDLE SPECIAL SUBJECT *#
     # Fix channel order for sub-121 (swap VEOG and HEOG)
     if bids_id == '121':
         ch_names = raw.copy().info['ch_names']
         ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
         raw = raw.reorder_channels(ch_names)
         raw.rename_channels(dict(VEOG='HEOG',HEOG='VEOG'))
-    
+        
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
     
@@ -143,6 +144,13 @@ for sub_string in sub_list:
     beh_data = pd.read_csv(beh_source_file, sep='\t')
     beh_data.drop(columns=cols_to_drop, inplace=True)
     beh_data.rename(columns=cols_to_rename, inplace=True)
+    
+    #* HANDLE SPECIAL SUBJECT *#
+    # Remove 1st 3 trials from 131
+    if bids_id=='131':
+        bad_trials = np.arange(3)
+        beh_data.drop(index=bad_trials, inplace=True)
+        beh_data.reset_index(inplace=True)
 
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
     beh_data['resp'].fillna('n/a', inplace=True)
