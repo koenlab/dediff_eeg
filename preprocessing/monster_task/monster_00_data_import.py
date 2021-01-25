@@ -126,7 +126,8 @@ for sub_string in sub_list:
         ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
         raw = raw.reorder_channels(ch_names)
         raw.rename_channels(dict(VEOG='HEOG',HEOG='VEOG'))
-    
+        del ch_names
+        
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
     
@@ -174,6 +175,9 @@ for sub_string in sub_list:
     beh_data.drop(columns=cols_to_drop, inplace=True)
     if beh_data.shape[0] == 481:
         beh_data.drop(index=480, inplace=True)
+    if beh_data.shape[0] > 480:
+        n_bad = beh_data.shape[0] - 480
+        beh_data.drop(beh_data.tail(n_bad).index, inplace=True)
 
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id

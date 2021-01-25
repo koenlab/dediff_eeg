@@ -62,7 +62,7 @@ bids_dir = data_dir / 'bids'
 bids_dir.mkdir(parents=True, exist_ok=True)
 
 ### Derivatives directory ###
-deriv_dir = bids_dir / 'derivatives' / f'task-{task}'
+deriv_dir = data_dir / 'derivatives' / f'task-{task}'
 deriv_dir.mkdir(parents=True, exist_ok=True)
 
 ### Report directory ###
