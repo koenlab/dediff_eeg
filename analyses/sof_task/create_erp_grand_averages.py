@@ -16,8 +16,26 @@ import json
 from mne import read_evokeds
 import mne
 
-from sof_config import (deriv_dir, task, get_sub_list)
+from sof_config import (analysis_dir, deriv_dir, task, get_sub_list,
+                        bad_subs)
 
+# Make an empty list
+all_dfs = []
+
+# Define the subjects
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+
+# Remove subjects from list
+for bad_sub in bad_subs:
+    sub_list.remove(bad_sub) 
+    
+# Make empty lists to store conditions
+novel = []
+repeat = []
+scene = []
+object = []
+face = []
+    
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
 for sub_string in sub_list:
@@ -35,4 +53,8 @@ for sub_string in sub_list:
     with open(evoked_json_file, 'r') as f:
         evoked_json = json.load(f)
     evokeds_key = evoked_json['evoked_objects']
+    
+    # Store in the group lists
+    for cond in ['novel', 'repeat', 'scene', 'object', 'face']:
+        this_evoked = evokeds[evokeds_key[cond]]
     
