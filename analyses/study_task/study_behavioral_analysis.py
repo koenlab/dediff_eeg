@@ -3,10 +3,17 @@ import pandas as pd
 
 from study_config import (analysis_dir, deriv_dir, task, get_sub_list)
 
+# Make an empty list
 all_dfs = []
 
+# Define the subjects
 sub_list = get_sub_list(deriv_dir, allow_all=True)
-for i, sub_string in enumerate(sub_list):
+
+# Remove subjects from list
+
+
+# Loop over subjects)
+for sub_string in sub_list:
     
     # Define the Subject ID and paths
     deriv_path = deriv_dir / sub_string
