@@ -181,20 +181,20 @@ for sub_string in sub_list:
 
     # Replace subject id and select needed data columns
     beh_data['id'] = bids_id
-    
+
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
     beh_data['resp'].fillna('n/a', inplace=True)
     beh_data['rt'].replace(-99.0, 'n/a', inplace=True)
     beh_data['correct'].fillna(0, inplace=True)
     beh_data['correct'].replace(-99.0, 0, inplace=True)
-    
+
     # Convert accuracy to integer
     beh_data['correct'] = beh_data['correct'].astype(int)
-    
+
     # Fil in some more values
     beh_data.replace(['None', '', '--'], 'n/a', inplace=True)
     beh_data.fillna('n/a', inplace=True)
-    
+
     # Make the abin_label column
     angle_bins = {}
     for i, a in enumerate(np.unique(beh_data['angle_bin'])):
@@ -203,7 +203,12 @@ for sub_string in sub_list:
 
     # Make a number of responses column
     beh_data['n_resp'] = (beh_data['resp'] != 'n/a').astype(int)
-    
+
+    # Subject 230 throw out first events (not recorded in EEG)
+    # Remove first behavioral events that were not recorded
+    if bids_id == '230':
+        beh_data = beh_data[-len(events)+1:]
+
     # Save behavioral data
     bids_path.update(datatype='beh')
     bids_path.directory.mkdir(parents=True, exist_ok=True)
@@ -224,6 +229,10 @@ for sub_string in sub_list:
     # Add new columns from beh_data
     events_data[cols_to_add] = 'n/a'
     
+    # Check that events_data has same # rows as events
+    if events_data.shape[0]-1 != beh_data.shape[0]:
+        raise ValueError('Events data has different number of trials than behavioral data. Fix this!!!')
+    
     # Update with values
     counter = 0 # Keep track of current row in beh_data
     for index, row in events_data.iterrows():
@@ -234,6 +243,7 @@ for sub_string in sub_list:
             counter += 1
     
     # Overwrite *events.tsv
+    events_data.drop(columns='index', inplace=True)
     events_data.to_csv(bids_path.fpath, sep='\t', index=False)
 
     ### UPDATE *eeg_json
