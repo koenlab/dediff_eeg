@@ -83,12 +83,12 @@ for sub_string in sub_list:
         
         ### Step 4: filter and crop evokeds 
         # Filter evokeds
-        evokeds_filt = [x.copy().filter(None,20, picks=['eeg']) for x in evokeds]
+        evokeds_filt = [x.copy().filter(None, 20, method='iir', picks=['eeg']) for x in evokeds]
 
         # Crop evokeds
         tmin, tmax = preprocess_options['evoked_tmin'], preprocess_options['evoked_tmax']
-        evokeds = [x.crop(tmin=tmin,tmax=tmax) for x in evokeds]
-        evokeds_filt = [x.crop(tmin=tmin,tmax=tmax) for x in evokeds_filt]
+        evokeds = [x.crop(tmin=tmin, tmax=tmax) for x in evokeds]
+        evokeds_filt = [x.crop(tmin=tmin, tmax=tmax) for x in evokeds_filt]
         
          ### Step 5: write evokeds
         # Write evoked file
@@ -135,7 +135,8 @@ for sub_string in sub_list:
                 'eeg': {
                     'highpass': evokeds_filt[0].info['highpass'],
                     'lowpass': evokeds_filt[0].info['lowpass'],
-                    'notch': 'n/a'
+                    'notch': 'n/a',
+                    'method': 'iir'
                 },
                 'eog': {
                     'highpass': evokeds_filt[0].info['highpass'],
