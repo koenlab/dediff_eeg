@@ -93,7 +93,7 @@ for sub_string in sub_list:
 
     #* HANDLE SPECIAL SUBJECT *#
     # Fix channel order for sub-121 (swap VEOG and HEOG)
-    if bids_id == '121':
+    if bids_id in ['121', '230']:
         ch_names = raw.copy().info['ch_names']
         ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
         raw = raw.reorder_channels(ch_names)
