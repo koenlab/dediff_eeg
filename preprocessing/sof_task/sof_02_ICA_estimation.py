@@ -148,6 +148,14 @@ for sub_string in sub_list:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
     
+    # Plot PSD
+    print('Plot PSD')
+    fig, (ax1, ax2) = plt.subplots(2,1)
+    fig.set_size_inches(w=8, h=6)
+    raw.plot_psd(picks=['eeg'], xscale='linear', show=False, ax=ax1, n_jobs=4)
+    epochs.plot_psd(picks=['eeg'], xscale='linear', show=False, ax=ax2, n_jobs=4)
+    plt.show()
+    
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
     

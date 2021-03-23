@@ -41,12 +41,12 @@ for sub_string in sub_list:
     print(f'Preprocessing task-{task} data for {sub_string}')
     print(f'  BIDS Folder: {bids_path}')
     print(f'  Derivatives Folder: {deriv_path}')
-    
+
     ### STEP 1: LOAD DATA AND UPDATE EVENTS
     # Load Raw EEG data from derivatives folder
     raw_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw = read_raw_fif(raw_fif_file, preload=True)
-    
+
     # Read events from annotations
     events, event_id = mne.events_from_annotations(raw, event_id=event_dict)
 
@@ -147,6 +147,14 @@ for sub_string in sub_list:
     with open(json_file, 'w') as outfile:
         json.dump(json_info, outfile, indent=4)
     del json_info, json_file
+    
+    # Plot PSD
+    print('Plot PSD')
+    fig, (ax1, ax2) = plt.subplots(2,1)
+    fig.set_size_inches(w=8, h=6)
+    raw.plot_psd(picks=['eeg'], xscale='linear', show=False, ax=ax1, n_jobs=4)
+    epochs.plot_psd(picks=['eeg'], xscale='linear', show=False, ax=ax2, n_jobs=4)
+    plt.show()
     
     # Extract epoch data for ease of computation
     epoch_data = epochs.get_data(picks=['eeg'])
