@@ -105,8 +105,8 @@ for sub_string in sub_list:
                                eog=['VEOG','HEOG'])
     raw.anonymize(daysback=anonymize['daysback'])
 
-    # Fix channel order for sub-121 (swap VEOG and HEOG)
-    if bids_id in ['121', '230']:
+    # Fix channel order (swap VEOG and HEOG)
+    if bids_id in ['121', '230', '237']:
         ch_names = raw.copy().info['ch_names']
         ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
         raw = raw.reorder_channels(ch_names)
