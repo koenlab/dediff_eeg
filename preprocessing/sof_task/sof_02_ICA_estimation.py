@@ -57,6 +57,7 @@ for sub_string in sub_list:
     threshold = .85
     min_dif = .005 # 5 ms difference
     events_adjusted = 0
+    delays = []
     for event in events:
         eeg, times = raw.copy().pick_channels(['Photosensor']).get_data(
             start=event[0]-20,stop=event[0]+51,return_times=True)
@@ -65,9 +66,11 @@ for sub_string in sub_list:
         mask = np.where(eeg > cutoff)[1][0]
         psensor_onset = latencies[mask]
         if (np.abs(event[0] - psensor_onset)/raw.info['sfreq']) > min_dif:
+            delays.append(event[0]-psensor_onset)
             event[0] = psensor_onset
             events_adjusted += 1            
     print(f'  {events_adjusted} events were shifted')
+    print(delays)
             
     ## Remove Photosensor from channels
     raw.drop_channels('Photosensor')
