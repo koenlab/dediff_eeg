@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
+from sklearn.model_selection import cross_val_score
+from sklearn.multiclass import OutputCodeClassifier
 from mne.decoding import (SlidingEstimator, GeneralizingEstimator, Scaler,
                           cross_val_multiscore, LinearModel, get_coef,
                           Vectorizer, CSP)
@@ -36,7 +38,7 @@ import mne
 from monster_config import (bids_dir, deriv_dir, task, preprocess_options, get_sub_list)
 
 # Determine number of simulations
-n_sims = 30
+n_sims = 10
 n_folds = 3
 
 def trim_epochs(inst, n_trials, n_folds):
@@ -85,8 +87,14 @@ def epochs_2_evokeds(top, bot, n_trials, n_folds):
         
 
 # Ask for subject IDs to analyze
-sub_list = get_sub_list(deriv_dir, allow_all=True)
-sub_list = [x for x in sub_list if int(x[-3:])<200]
+# sub_list = get_sub_list(deriv_dir, allow_all=True)
+sub_list = [x.name for x in deriv_dir.glob('sub-*') if x.is_dir()]
+bad_ids = ['sub-134', 'sub-135', 'sub-136', 'sub-137', 'sub-138', 'sub-139',
+           'sub-218', 'sub-239', 'sub-240', 'sub-241', 'sub-242', 'sub-243', 
+           'sub-244', 'sub-245', 'sub-246']
+sub_list = [sub for sub in sub_list if sub not in bad_ids]
+sub_list = [x for x in sub_list if int(x[-3:])<=200 and x not in bad_ids]
+sub_list.sort()
 group_scores = []
 for sub_string in sub_list:
 
@@ -95,8 +103,8 @@ for sub_string in sub_list:
     deriv_path = deriv_dir / sub_string
     print(f'Creating evoked for task-{task} data for {sub_string}')
     print(f'  Derivatives Folder: {deriv_path}')
-    
-    
+
+
     ### STEP 1: Load manually cleaned epochs and re-reference 
     # Read in Cleaned Epochs
     epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-mastoids_desc-cleaned_epo.fif.gz'
@@ -104,10 +112,14 @@ for sub_string in sub_list:
         continue
     epochs = read_epochs(epochs_fif_file, preload=True)
     epochs.drop_channels(['FT9','FT10','TP9','TP10'])
-    epochs.filter(0, 20, method='iir')
-    epochs.crop(tmin=-.05, tmax=.4)
+    epochs.filter(None, 6, h_trans_bandwidth=2.5, pad='symmetric')
+    # epochs.filter(8, 12, l_trans_bandwidth=1.0, h_trans_bandwidth=1.0, pad='symmetric')
+    # epochs.apply_hilbert(envelope=True)
+    # epochs._data = epochs._data**2
+    epochs.resample(50)
+    # epochs.crop(tmin=-.1, tmax=.6)
     times = epochs.times
-    
+
     ### STEP 2: Get separate epochs objects for each conditoin
     # Get for each condition
     a1_top = epochs['top/stan/a1']['correct==1']
@@ -133,7 +145,7 @@ for sub_string in sub_list:
     conds = itertools.product(bins, locs)
     n_total_epochs = [eval(f'len({x}_{y})') for x, y in conds]
     n_epochs_per_bin = int(np.floor(np.min(n_total_epochs) / n_folds))
-    
+
     ### Step 3: Loop over n_sims
     all_scores = []
     for sim in np.arange(n_sims):
@@ -176,21 +188,27 @@ for sub_string in sub_list:
             [8 for x in a8]
 
         # Make pipeline
-        clf = make_pipeline(StandardScaler(),
-                            LinearSVC(penalty='l2', C=1.0, multi_class='ovr',
-                                max_iter=10000))
-        # clf = make_pipeline(StandardScaler(with_std=False),
+        svc = LinearSVC(penalty='l2', C=1.0, max_iter=10000, random_state=1)
+        # ecoc = OutputCodeClassifier(svc, code_size=.5, random_state=1)
+        # # ecoc = OutputCodeClassifier(svc, code_size=2.0, randome_state=1)
+        clf = make_pipeline(StandardScaler(), 
+                            OutputCodeClassifier(svc, code_size=2.0, random_state=1))
+        # clf = make_pipeline(StandardScaler(),
+        #                     LinearSVC(penalty='l2', C=1.0, multi_class='ovr',
+        #                         max_iter=10000))
+        # # clf = make_pipeline(StandardScaler(with_std=False),
         #                     LinearSVC(penalty='l2', C=1.0, multi_class='ovr',
         #                         max_iter=10000))
         
         
         # Make X and y vectors
-        time_decod = SlidingEstimator(clf, n_jobs=1, scoring='accuracy', verbose=True)
+        time_decod = SlidingEstimator(clf, n_jobs=1, verbose=False)
         scores = cross_val_multiscore(time_decod, X, y, cv=3, n_jobs=1)
         all_scores.append(scores)
     
     # Subject scores 
-    group_scores.append(np.mean(all_scores, axis=(0,1)))        
+    group_scores.append(np.mean(all_scores, axis=(0,1)))  
+    del epochs      
     
     
 # # Plot
@@ -203,5 +221,39 @@ ax.set_ylabel('Accuracy')  # Area Under the Curve
 ax.legend()
 ax.axvline(.0, color='k', linestyle='-')
 ax.set_title('Sensor space decoding')
-plt.ylim(bottom=.1,top=.25)
-plt.savefig('test.png', format='png')
+plt.ylim(bottom=0,top=.20)
+plt.savefig('young_adults.png', format='png')
+
+
+# a1 = mne.combine_evoked([a1_top.average(), a1_bot.average()], weights=[.5,.5])
+# a2 = mne.combine_evoked([a2_top.average(), a2_bot.average()], weights=[.5,.5])
+# a3 = mne.combine_evoked([a3_top.average(), a3_bot.average()], weights=[.5,.5])
+# a4 = mne.combine_evoked([a4_top.average(), a4_bot.average()], weights=[.5,.5])
+# a5 = mne.combine_evoked([a5_top.average(), a5_bot.average()], weights=[.5,.5])
+# a6 = mne.combine_evoked([a6_top.average(), a6_bot.average()], weights=[.5,.5])
+# a7 = mne.combine_evoked([a7_top.average(), a7_bot.average()], weights=[.5,.5])
+# a8 = mne.combine_evoked([a8_top.average(), a8_bot.average()], weights=[.5,.5])
+
+
+# topo_times=np.arange(.05, .65, .05)
+# topo_avg = .05
+# min, max = -12, 12
+# fig, ax = plt.subplots(8,12)
+# a1.plot_topomap(axes=ax[0], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a2.plot_topomap(axes=ax[1], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a3.plot_topomap(axes=ax[2], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a4.plot_topomap(axes=ax[3], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a5.plot_topomap(axes=ax[4], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a6.plot_topomap(axes=ax[5], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a7.plot_topomap(axes=ax[6], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+# a8.plot_topomap(axes=ax[7], times=topo_times, average=topo_avg, colorbar=False, vmin=min, vmax=max)
+
+# fig, ax = plt.subplots(1,8)
+# a1.plot_topomap(axes=ax[0], times=[.08], average=.04, colorbar=False)
+# a2.plot_topomap(axes=ax[1], times=[.08], average=.04, colorbar=False)
+# a3.plot_topomap(axes=ax[2], times=[.08], average=.04, colorbar=False)
+# a4.plot_topomap(axes=ax[3], times=[.08], average=.04, colorbar=False)
+# a5.plot_topomap(axes=ax[4], times=[.08], average=.04, colorbar=False)
+# a6.plot_topomap(axes=ax[5], times=[.08], average=.04, colorbar=False)
+# a7.plot_topomap(axes=ax[6], times=[.08], average=.04, colorbar=False)
+# a8.plot_topomap(axes=ax[7], times=[.08], average=.04, colorbar=False)
