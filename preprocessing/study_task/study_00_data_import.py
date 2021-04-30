@@ -102,7 +102,7 @@ for sub_string in sub_list:
 
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
-                               eog=['VEOG','HEOG'])
+                                eog=['VEOG','HEOG'])
     raw.anonymize(daysback=anonymize['daysback'])
 
     # Fix channel order (swap VEOG and HEOG)
@@ -111,18 +111,22 @@ for sub_string in sub_list:
         ch_names[-1], ch_names[-2] = ch_names[-2], ch_names[-1]
         raw = raw.reorder_channels(ch_names)
         raw.rename_channels(dict(VEOG='HEOG',HEOG='VEOG'))
-    
+
     # Update line frequency to 60 Hz
     raw.info['line_freq'] = 60.0
-    
+
     # Update event descriptions
     description = raw.annotations.description
-    for old_name, new_name in rename_dict.items():
+    for i, (old_name, new_name) in enumerate(rename_dict.items()):
         description[description == old_name] = new_name
+    
+    # For sub-239...remove first 6 events
+    if bids_id == '239':
+        description[1:6] = 'bad'
     
     # Extract Events
     events, event_id = events_from_annotations(raw, event_id=event_dict)
-    
+
     # Get bad channels and update
     sub_bad_chans = bad_chans.get(bids_id)
     if sub_bad_chans is not None:
@@ -130,24 +134,24 @@ for sub_string in sub_list:
         
     # Write BIDS Output
     write_raw_bids(raw, bids_path=bids_path, event_id=event_id, 
-                   events_data=events, overwrite=True, verbose=False)
-    
+                    events_data=events, overwrite=True, verbose=False)
+
     ### UPDATE CHANNELS.TSV ###
     # Load *channels.tsv file
     bids_path.update(suffix='channels', extension='.tsv')
     chans_data = pd.read_csv(bids_path.fpath, sep='\t')
-    
+
     # Add status_description
     chans_data['status_description'] = 'n/a'
     if sub_bad_chans is not None:
         for chan, reason in sub_bad_chans.items():
             chans_data.loc[chans_data['name'] == chan, ['status_description']] = reason
-    
+
     # Add EEGReference
     chans_data['reference'] = 'FCz'
     for chan in ['VEOG', 'HEOG', 'Photosensor']:
         chans_data.loc[chans_data['name']==chan, ['reference']] = 'n/a'
-    
+
     # Overwrite file
     chans_data.to_csv(bids_path.fpath, sep='\t',index=False)
         
@@ -155,11 +159,11 @@ for sub_string in sub_list:
     # Read in the study*.tsv behavioral file
     study_source_file = source_path / f'{sub_string}_task-{task}_run-01_beh.tsv'
     study_data = pd.read_csv(study_source_file,sep='\t')
-    
+
     # Rename and drop data columns
     study_data.rename(columns=study_cols_to_rename, inplace=True)
     study_data.drop(columns=cols_to_drop, inplace=True)
-    
+
     # Replace NaN and -99 with 'n/a' for resp and rt, respectively
     study_data['study_resp'].replace(-99.0, 'n/a', inplace=True)
     study_data['study_resp_key'].replace('na', 'n/a', inplace=True)
@@ -167,10 +171,10 @@ for sub_string in sub_list:
     study_data['category'].replace('objects', 'object', inplace=True)
     study_data['category'].replace('scenes', 'scene', inplace=True)
     study_data.replace(['None', '', '--'], 'n/a', inplace=True)
-    
+
     # Replace subject id and select needed data columns
     study_data['id'] = bids_id
-    
+
     # Add study correct
     study_data['study_correct'] = 0 # initialize to wrong
     for index, row in study_data.iterrows():
@@ -188,12 +192,12 @@ for sub_string in sub_list:
     # Read in the study*.tsv behavioral file
     test_source_file = source_path / f'{sub_string}_task-test_run-01_beh.tsv'
     test_data = pd.read_csv(test_source_file,sep='\t')
-    
+
     # Rename and drop data columns
     test_data.rename(columns=test_cols_to_rename, inplace=True)
     test_data.drop(columns=cols_to_drop, inplace=True)
     test_data.drop(columns='resp_acc', inplace=True)
-    
+
     # Update to 'n/a' values
     test_data['test_resp'].replace(-99.0, 'n/a', inplace=True)
     test_data['test_resp_key'].replace('na', 'n/a', inplace=True)
@@ -201,7 +205,7 @@ for sub_string in sub_list:
     test_data['category'].replace('objects', 'object', inplace=True)
     test_data['category'].replace('scenes', 'scene', inplace=True)
     test_data.replace(['None', '', '--'], 'n/a', inplace=True)
-    
+
     # Replace subject id and select needed data columns
     test_data['id'] = bids_id
 
@@ -225,20 +229,31 @@ for sub_string in sub_list:
         test_data.drop(index=bad_test_trials, inplace=True)
         study_data.reset_index(inplace=True)
         test_data.reset_index(inplace=True)
+    if bids_id=='239':
+        bad_study_trials = np.arange(6)
+        bad_trials = study_data.iloc[bad_study_trials]['image'].to_list()
+        study_data.drop(index=bad_study_trials, inplace=True)
+        bad_test_trials = []
+        for i, image in enumerate(test_data['image']):
+            if image in bad_trials:
+                bad_test_trials.append(i)
+        test_data.drop(index=bad_test_trials, inplace=True)
+        study_data.reset_index(inplace=True)
+        test_data.reset_index(inplace=True)
 
     ### SAVE STUDY AND TEST DATA ###
     # Update BIDSPath
     bids_path.update(datatype='beh')
     bids_path.directory.mkdir(parents=True, exist_ok=True)
-    
+
     # Save study data
     study_save_file = bids_path.directory / f'sub-{bids_id}_task-{task}_beh.tsv'
     study_data.to_csv(study_save_file, sep='\t', index=False)
-    
+
     # Save test data
     test_save_file = bids_path.directory / f'sub-{bids_id}_task-test_beh.tsv'
     test_data.to_csv(test_save_file, sep='\t', index=False)
-    
+
     ### UPDATE *_EVENTS.TSV ###
     # Load *events.tsv
     bids_path.update(datatype='eeg', suffix='events')
@@ -262,7 +277,7 @@ for sub_string in sub_list:
                 events_data.at[index, col] = this_trial[col]
             counter += 1
 
-     # Overwrite *events.tsv
+        # Overwrite *events.tsv
     events_data.to_csv(bids_path.fpath, sep='\t', index=False)
 
     ### UPDATE *eeg_json
@@ -270,11 +285,11 @@ for sub_string in sub_list:
     bids_path.update(suffix='eeg', extension='json')
     with open(bids_path.fpath, 'r') as file:
         eeg_json = json.load(file)
-    
+
     # Update keys
     eeg_json['EEGReference'] = 'FCz'
     eeg_json['EEGGround'] = 'Fpz'
-    
+
     # Save EEG JSON
     with open(bids_path.fpath, 'w') as file:
         json.dump(eeg_json, file)
@@ -284,7 +299,7 @@ for sub_string in sub_list:
     raw_out_file = deriv_path / f'sub-{bids_id}_task-{task}_ref-FCz_desc-import_raw.fif.gz'
     raw.save(raw_out_file, overwrite=overwrite)
 
-     # Make a JSON
+        # Make a JSON
     json_info = {
         'Description': 'Import from BrainVision Recorder',
         'sfreq': raw.info['sfreq'],
@@ -303,7 +318,7 @@ for sub_string in sub_list:
     events_out_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.txt'
     mne.write_events(events_out_file, events)
 
-     # Make a JSON
+        # Make a JSON
     json_info = {
         'Description': 'Events from Brain Vision Import',
         'columns': ['onset', 'duration', 'code'],
