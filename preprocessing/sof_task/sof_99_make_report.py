@@ -15,11 +15,10 @@ from math import ceil
 
 import mne
 from mne import Report
-from mne import pick_types
 from mne.preprocessing import read_ica
 from mne.viz import plot_compare_evokeds
 
-from sof_config import (bids_dir, deriv_dir, report_dir, task, 
+from sof_config import (deriv_dir, report_dir, task, 
                         get_sub_list, bv_montage)
 from sof_config import event_dict as event_id
 
