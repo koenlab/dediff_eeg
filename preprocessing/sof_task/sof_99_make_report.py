@@ -9,7 +9,6 @@ the SOF (scene, object, face) task.
 import numpy as np
 import pandas as pd
 import json
-from itertools import islice
 import matplotlib.pyplot as plt
 from math import ceil
 
