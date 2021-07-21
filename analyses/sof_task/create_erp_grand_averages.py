@@ -77,7 +77,7 @@ for sub in sub_list:
             older[cond].append(this_evoked)
 
         # Save individual erp
-        out_file = f'sub-{sub}_task-sof_cond-{cond}_ave.fif.gz'
+        out_file = f'{sub}_task-sof_cond-{cond}_ave.fif.gz'
         if cond in ['novel', 'repeat']:
             out_file = out_rep / out_file
         else:
