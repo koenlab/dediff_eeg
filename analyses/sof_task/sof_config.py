@@ -4,7 +4,7 @@ import numpy as np
 from mne.channels import read_custom_montage
 
 ### Bad Subjects not included in group analysis
-bad_subs = ['sub-202', 'sub-218']
+bad_subs = ['sub-106', 'sub-202', 'sub-218']
 
 
 ### THESE ARE THINGS I CAN CHANGE AND UPDATE ###
