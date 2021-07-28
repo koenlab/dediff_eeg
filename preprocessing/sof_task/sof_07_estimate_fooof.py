@@ -1,28 +1,28 @@
 """
-Script: sof_04_make_evokeds.py
+Script: sof_07_estimate_fooof.py
 Creator: Joshua D. Koen
-Description: This script loads cleaned epoch data and makes
-evoked objects for conditions of interest. 
+Description: This script loads cleaned epoch data runs the
+FOOOF algorithm. The script also writes an HTML report.
+
+FOOOF is run only on data from the 1 second prestimulus period
+for trials that are first presentation only (not repeats) that
+did not recieve a response (i.e., a commission error)
 """
 
 #####---Import Libraries---#####
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import cm, colors, colorbar
-import json
-
 
 from mne import read_epochs
 from mne.time_frequency import psd_welch
-from mne.viz import plot_topomap
-import mne
 
-from fooof import (FOOOF, FOOOFGroup)
-from fooof.analysis import get_band_peak_fg
-from fooof.plts.spectra import plot_spectrum
+from fooof import FOOOFGroup
 
-from sof_config import (bids_dir, deriv_dir, task, preprocess_options, get_sub_list)
+from sof_config import (deriv_dir, task, get_sub_list)
+
+# Make report folder
+report_dir = deriv_dir / 'fooof_reports'
+report_dir.mkdir(exist_ok=True, parents=True)
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -31,41 +31,49 @@ for sub_string in sub_list:
     ### SUBJECT INFORMATION DEFINITION ###
     # Define the Subject ID and paths
     deriv_path = deriv_dir / sub_string
-    # print(f'Creating evoked for task-{task} data for {sub_string}')
-    # print(f'  Derivatives Folder: {deriv_path}')
-    
+
     # Load epochs file
-    epochs_fif_file = deriv_path / f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
+    epochs_fif_file = deriv_path / \
+        f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     if not epochs_fif_file.is_file():
         continue
     epochs = read_epochs(epochs_fif_file)["repeat==1 and n_responses==0"]
-    epochs.drop_channels(['VEOG','HEOG','FT9','FT10','TP9','TP10'])
-    
+    epochs.filter(None, 40)
+    epochs.drop_channels(['VEOG', 'HEOG', 'FT9', 'FT10', 'TP9', 'TP10'])
+    epochs.apply_baseline(baseline=(None, 0))
+
     # Estimate the PSD in the pre-stimulus window
-    spectrum, freqs = psd_welch(epochs, tmin=-1.0, tmax=0.0, 
-                               fmin=2, fmax=100,
-                               n_per_seg=200, n_overlap=150)
-    spectrum = np.mean(spectrum, axis=(0))
-    
+    spectrum, freqs = psd_welch(epochs, tmin=-1.0, tmax=0.0,
+                                fmin=2, fmax=30, n_fft=250,
+                                average='median',
+                                n_per_seg=200, n_overlap=150)
+    spectrum = np.mean(spectrum, axis=0)
+
     # Run FOOF
-    fm = FOOOF(peak_width_limits=(2.0, 8.0), aperiodic_mode='fixed')
+    fm = FOOOFGroup(peak_width_limits=(2.0, 12.0),
+                    aperiodic_mode='fixed',
+                    peak_threshold=1)
 
     # Set the frequency range to fit the model
-    freq_range = [3, 40]
+    freq_range = [2, 30]
 
-    # Report: fit the model, print the resulting parameters, and plot the reconstruction
+    # Fit the FOOOF model
     fm.fit(freqs, spectrum, freq_range)
-    fm.report()
-    
-    fg = FOOOFGroup(peak_width_limits=(2.0, 8.0), aperiodic_mode='fixed',
-                    min_peak_height=0.05, max_n_peaks=6)
-    fg.fit(freqs, spectrum, [3, 30])
-    fg.print_results()
-    fg.plot()
-    
-    alphas = get_band_peak_fg(fg, [15,30])
-    alpha_pw = alphas[:,1]
-    
-    exps = fg.get_params('aperiodic_params', 'exponent')
-    f = plot_topomap(alpha_pw, epochs.info, cmap=cm.viridis, contours=0)
-    f.colorbar()
+
+    # Save the FOOOF model in derivatives
+    fooof_out_file = f'{sub_string}_task-sof_ref-avg_desc-firstcorrect_fooof'
+    fm.save(fooof_out_file, file_path=deriv_path,
+            save_results=True, save_data=True)
+
+    # Save Results
+    fooof_results_file = f'{sub_string}_task-sof_fooofreport.pdf'
+    fm.save_report(fooof_results_file, file_path=report_dir)
+
+    # # Make a FOOOF object for individual data
+    # for i in np.arange(spectrum.shape[0]):
+    #     fi = FOOOF(peak_width_limits=(2.0, 12.0),
+    #                aperiodic_mode='fixed',
+    #                peak_threshold=1)
+    #     fi.fit(freqs, spectrum[i], freq_range)
+    #     fi.plot()
+    #     fig = plt.gcf()
