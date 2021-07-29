@@ -264,7 +264,7 @@ for sub in sub_list:
     json_file = deriv_path / f'{sub}_task-{task}_desc-import_eve.json'
     try:
         json_file.unlink()
-    except OSError as e:
+    except OSError:
         pass
     json_file = deriv_path / f'sub-{bids_id}_task-{task}_desc-import_eve.json'
     with open(json_file, 'w') as outfile:
