@@ -1,11 +1,15 @@
 """
 Script: 00_sof_data_import.py
 Creator: Joshua D. Koen
-Description: This script imports data from sourcedata to bids format for 
+Description: This script imports data from sourcedata to bids format for
 the SOF (scene, object, face) task. 
 """
 
-#####---Import Libraries---#####
+# Import Libraries
+import sys
+sys.path.append('../../')  # For functions file
+sys.path.append('..')  # For config file
+
 import numpy as np
 import pandas as pd
 import json
@@ -17,13 +21,15 @@ from mne_bids import BIDSPath, write_raw_bids
 
 import mne
 
-from sof_config import (bids_dir, source_dir, deriv_dir, 
-                        event_dict, task, bad_chans, get_sub_list)
+from sof_config import (bids_dir, source_dir, deriv_dir,
+                        event_dict, task, bad_chans)
 
-#####---Overwrite BIDS---#####
+from functions import get_sub_list
+
+# Should BIDS files be overwritten
 overwrite = True
 
-#####---Event Dictionaries for renaming and output---#####
+# Event Dictionaries for renaming and output
 # Rename dictionary
 rename_dict = {
     'New Segment/': 'boundary',
@@ -38,9 +44,9 @@ rename_dict = {
 # Add boundary to event_dict
 event_dict['boundary'] = -99
 
-#####---Data columns to keep and add---#####
+# DATA COLUMNS TO KEEP AND ADD
 # List of data columns to drop behavioral data file
-cols_to_drop = ['date','expName','eeg_record','ran','order','image_file']
+cols_to_drop = ['date', 'expName', 'eeg_record', 'ran', 'order', 'image_file']
 
 # Dictionary of columns to rename in behavioral data file
 cols_to_rename = {
@@ -50,20 +56,20 @@ cols_to_rename = {
 }
 
 # List of columns to add to *events.tsv from behavioral data
-cols_to_add = ['trial_number','category','subcategory','repeat','resp',
-               'rt','correct','n_responses']
+cols_to_add = ['trial_number', 'category', 'subcategory', 'repeat', 'resp',
+               'rt','correct', 'n_responses']
 
-#####---Get Subject List---#####
+# Get Subject List
 sub_list = get_sub_list(source_dir, is_source=True, allow_all=True)
-for sub_string in sub_list:
-    
-    ### SUBJECT INFORMATION DEFINITION ###
+for sub in sub_list:
+
+    # SUBJECT INFORMATION DEFINITION
     # Define the Subject ID and paths
-    sub_id = sub_string.replace('sub-','')
-    bids_id = sub_id.replace('p3e2s','')
-    source_path = source_dir / sub_string
+    sub_id = sub.replace('sub-', '')
+    bids_id = sub_id.replace('p3e2s', '')
+    source_path = source_dir / sub
     bids_path = BIDSPath(subject=bids_id, task=task,
-                        datatype='eeg', root=bids_dir)
+                         datatype='eeg', root=bids_dir)
     deriv_path = deriv_dir / f'sub-{bids_id}'
     deriv_path.mkdir(parents=True, exist_ok=True)
     print(f'Making BIDS data for sub-{bids_id} ({sub_id}) on task-{task}')
@@ -79,7 +85,7 @@ for sub_string in sub_list:
     
     ### WRITE EEG TO BIDS FORMAT ###
     # Define the source data file 
-    source_vhdr = source_path / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
+    source_vhdr = source_path / f'{sub}_task-{task}_run-01_eeg.vhdr'
 
     # Anonymize Dictionary
     anonymize = {
@@ -140,7 +146,7 @@ for sub_string in sub_list:
         
     ### PROCESS BEHAVIORAL DATA FILE ###
     # Read in the sof*.tsv behavioral file
-    beh_source_file = source_path / f'{sub_string}_task-{task}_run-01_beh.tsv'
+    beh_source_file = source_path / f'{sub}_task-{task}_run-01_beh.tsv'
     beh_data = pd.read_csv(beh_source_file, sep='\t')
     beh_data.drop(columns=cols_to_drop, inplace=True)
     beh_data.rename(columns=cols_to_rename, inplace=True)
@@ -246,7 +252,7 @@ for sub_string in sub_list:
         'sfreq': raw.info['sfreq'],
         'codes': event_id
     }
-    json_file = deriv_path / f'{sub_string}_task-{task}_desc-import_eve.json'
+    json_file = deriv_path / f'{sub}_task-{task}_desc-import_eve.json'
     try:
         json_file.unlink()
     except:
