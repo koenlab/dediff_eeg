@@ -24,29 +24,29 @@ overwrite = True
 
 # Get Subject List
 sub_list = get_sub_list(deriv_dir, allow_all=True)
-for sub_string in sub_list:
+for sub in sub_list:
 
     # Get subject information
-    sub_id = sub_string.replace('sub-', '')
-    out_path = deriv_dir / sub_string
+    sub_id = sub.replace('sub-', '')
+    out_path = deriv_dir / sub
     out_path.mkdir(parents=True, exist_ok=True)
 
     # Make figure
     plt.close('all')
     fig = plt.figure()
     fig.set_size_inches([11, 7])
-    fig.suptitle(sub_string, fontsize=18)
+    fig.suptitle(sub, fontsize=18)
 
     # Create a list for ease of use later
     groups = ['category', 'repeat']
 
     # Load the behavioral data file
-    beh_file = bids_dir / sub_string / 'beh' / \
-        f'{sub_string}_task-{task}_beh.tsv'
+    beh_file = bids_dir / sub / 'beh' / \
+        f'{sub}_task-{task}_beh.tsv'
     beh_data = pd.read_csv(beh_file, sep='\t')
 
     # Check if participant has been done and, unless I want to overwrite, skip
-    trial_file = out_path / f'{sub_string}_task-{task}_desc-triallevel_beh.tsv'
+    trial_file = out_path / f'{sub}_task-{task}_desc-triallevel_beh.tsv'
     if trial_file.is_file() and not overwrite:
         continue
 
@@ -117,9 +117,9 @@ for sub_string in sub_list:
         x_pos += .5
 
     # Save plot to figures
-    fig_path = deriv_dir / sub_string / 'figures'
+    fig_path = deriv_dir / sub / 'figures'
     fig_path.mkdir(parents=True, exist_ok=True)
-    fig_file = fig_path / f'{sub_string}_task-{task}_beh_performance.png'
+    fig_file = fig_path / f'{sub}_task-{task}_beh_performance.png'
     fig.savefig(fig_file, dpi=600)
 
     # Make Data frame to store output
@@ -144,12 +144,12 @@ for sub_string in sub_list:
 
     # Write summary data file
     summary_file = out_path / \
-        f'{sub_string}_task-{task}_desc-summarystats_beh.tsv'
+        f'{sub}_task-{task}_desc-summarystats_beh.tsv'
     summary_df = pd.DataFrame().from_dict(out_dict)
     summary_df.to_csv(summary_file, index=False, sep='\t')
 
     # Write copy of behavior data to derivatives
-    trial_file = out_path / f'{sub_string}_task-{task}_desc-triallevel_beh.tsv'
+    trial_file = out_path / f'{sub}_task-{task}_desc-triallevel_beh.tsv'
     beh_data.to_csv(trial_file, sep='\t', index=False)
 
     # Show plot
