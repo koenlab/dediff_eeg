@@ -1,5 +1,5 @@
 """
-Script: sof_04_make_evokeds.py
+Script: sof_102_make_evokeds.py
 Creator: Joshua D. Koen
 Description: This script loads cleaned epoch data and makes
 evoked objects for conditions of interest. 
@@ -77,6 +77,8 @@ for sub in sub_list:
     fooof_file = f'{sub}_task-sof_ref-avg_desc-firstcorrect_fooof.json'
     copyfile(deriv_path / fooof_file, out_fooof / fooof_file)
 
+# Save all subjects into a single file for each condition to
+# make plots with error bars
 for cond in young_erps.keys():
     young_file = f'young_task-sof_cond-{cond}_ave.fif.gz'
     write_evokeds(out_erps / young_file, young_erps[cond])
