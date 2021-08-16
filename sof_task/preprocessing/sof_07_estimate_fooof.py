@@ -10,38 +10,28 @@ did not recieve a response (i.e., a commission error)
 """
 
 #####---Import Libraries---#####
+import sys
+sys.path.append('../../')  # For functions file
+sys.path.append('..')  # For config file
+
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 
 from mne import read_epochs
 from mne.time_frequency import psd_welch
 
 from fooof import FOOOFGroup
 
-from sof_config import (deriv_dir, task, get_sub_list)
+from sof_config import (deriv_dir, task)
+from functions import get_sub_list
 
 # Make report folder
 report_dir = deriv_dir / 'fooof_reports'
 report_dir.mkdir(exist_ok=True, parents=True)
 
-# Ask for subject IDs to analyze
-sub_list = get_sub_list(deriv_dir, allow_all=True)
-for sub_string in sub_list:
 
-    ### SUBJECT INFORMATION DEFINITION ###
-    # Define the Subject ID and paths
-    deriv_path = deriv_dir / sub_string
-
-    # Load epochs file
-    epochs_fif_file = deriv_path / \
-        f'{sub_string}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
-    if not epochs_fif_file.is_file():
-        continue
-    epochs = read_epochs(epochs_fif_file)["repeat==1 and n_responses==0"]
-    epochs.filter(None, 40)
-    epochs.drop_channels(['VEOG', 'HEOG', 'FT9', 'FT10', 'TP9', 'TP10'])
-    epochs.apply_baseline(baseline=(None, 0))
-
+# FOOF fit
+def fit_fooof(epochs):
     # Estimate the PSD in the pre-stimulus window
     spectrum, freqs = psd_welch(epochs, tmin=-1.0, tmax=0.0,
                                 fmin=2, fmax=30, n_fft=250,
@@ -59,21 +49,74 @@ for sub_string in sub_list:
 
     # Fit the FOOOF model
     fm.fit(freqs, spectrum, freq_range)
+    return fm.copy()
+
+
+# Ask for subject IDs to analyze
+sub_list = get_sub_list(deriv_dir, allow_all=True)
+for sub in sub_list:
+
+    ### SUBJECT INFORMATION DEFINITION ###
+    # Define the Subject ID and paths
+    deriv_path = deriv_dir / sub
+
+    # Load epochs file
+    epochs_fif_file = deriv_path / \
+        f'{sub}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
+    if not epochs_fif_file.is_file():
+        continue
+    epochs = read_epochs(epochs_fif_file)["repeat==1 and n_responses==0"]
+    epochs.drop_channels(['VEOG', 'HEOG', 'FT9', 'FT10', 'TP9', 'TP10'])
+    epochs.apply_baseline(baseline=(None, 0))
+
+    # Run first pass
+    fm_orig = fit_fooof(epochs)
 
     # Save the FOOOF model in derivatives
-    fooof_out_file = f'{sub_string}_task-sof_ref-avg_desc-firstcorrect_fooof'
-    fm.save(fooof_out_file, file_path=deriv_path,
-            save_results=True, save_data=True)
+    fooof_out_file = f'{sub}_task-sof_ref-avg_desc-orig_fooof'
+    fm_orig.save(fooof_out_file, file_path=deriv_path,
+                 save_results=True, save_data=True)
 
     # Save Results
-    fooof_results_file = f'{sub_string}_task-sof_fooofreport.pdf'
-    fm.save_report(fooof_results_file, file_path=report_dir)
+    fooof_results_file = f'{sub}_task-sof_desc-orig_fooofreport.pdf'
+    fm_orig.save_report(fooof_results_file, file_path=report_dir)
 
-    # # Make a FOOOF object for individual data
-    # for i in np.arange(spectrum.shape[0]):
-    #     fi = FOOOF(peak_width_limits=(2.0, 12.0),
-    #                aperiodic_mode='fixed',
-    #                peak_threshold=1)
-    #     fi.fit(freqs, spectrum[i], freq_range)
-    #     fi.plot()
-    #     fig = plt.gcf()
+    # Find bad r2 channel
+    epochs.info['bads'] = []
+    for i, r in enumerate(fm_orig.get_params('r_squared')):
+        if r < .75:
+            epochs.info['bads'].append(epochs.info['ch_names'][i])
+    epochs.interpolate_bads()
+
+    # Store fm_orig data in a data frame
+    fooof_df = pd.DataFrame({
+        'ch_names': epochs.info['ch_names'],
+        'exp_orig': fm_orig.get_params('aperiodic', col='exponent'),
+        'r2_orig': fm_orig.get_params('r_squared'),
+        'error_orig': fm_orig.get_params('error')
+    })
+    fooof_df.insert(0, 'id', sub)
+
+    # Run second pass
+    fm_interp = fit_fooof(epochs)
+
+    # Save the FOOOF model in derivatives
+    fooof_out_file = f'{sub}_task-sof_ref-avg_desc-interp_fooof'
+    fm_interp.save(fooof_out_file, file_path=deriv_path,
+                   save_results=True, save_data=True)
+
+    # Save Results
+    fooof_results_file = f'{sub}_task-sof_desc-interp_fooofreport.pdf'
+    fm_interp.save_report(fooof_results_file, file_path=report_dir)
+
+    # Add to data frame
+    fooof_df['exp_interp'] = fm_interp.get_params('aperiodic', col='exponent')
+    fooof_df['r2_interp'] = fm_interp.get_params('r_squared')
+    fooof_df['error_interp'] = fm_interp.get_params('error')
+
+    # Save dataframe
+    df_file = deriv_path / f'{sub}_task-sof_fooof.tsv'
+    fooof_df.to_csv(df_file, sep='\t', index=False)
+
+    (report_dir / f'{sub}_task-sof_fooofreport.pdf').unlink(missing_ok=True)
+    (deriv_dir / f'{sub}_task-sof_ref-avg_desc-firstcorrect_fooof.json').unlink(missing_ok=True)
