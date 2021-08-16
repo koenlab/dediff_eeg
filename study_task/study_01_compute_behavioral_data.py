@@ -350,7 +350,3 @@ for sub_string in sub_list:
     trial_file = out_path / f'{sub_string}_task-{task}_desc-triallevel_beh.tsv'
     beh_data.to_csv(trial_file, sep='\t', index=False)
     
-    
-    
-    
-    
