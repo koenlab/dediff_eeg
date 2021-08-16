@@ -2,7 +2,7 @@
 Script: 00_sof_data_import.py
 Creator: Joshua D. Koen
 Description: This script imports data from sourcedata to bids format for
-the SOF (scene, object, face) task. 
+the SOF (scene, object, face) task.
 """
 
 # Import Libraries

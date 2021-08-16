@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
-from sof_config import (bids_dir, deriv_dir, task, get_sub_list)
+from sof_config import (bids_dir, deriv_dir, task)
 
 from functions import get_sub_list
 
