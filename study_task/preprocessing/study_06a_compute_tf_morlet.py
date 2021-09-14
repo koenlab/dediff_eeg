@@ -25,7 +25,7 @@ scenes = []
 objects = []
 
 # Define which reference to use
-ref = 'avg'    
+ref = 'avg'
 
 # Frequecies to estimate
 freqs = np.arange(3,51,1) # Estimate 4-50Hz in linear intervals
