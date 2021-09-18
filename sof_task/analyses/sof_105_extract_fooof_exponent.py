@@ -7,13 +7,16 @@ evoked objects for conditions of interest.
 
 # Import libraries
 import sys
+import os
+
+os.chdir(sys.path[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 
 import pandas as pd
 
 from sof_config import (analysis_dir, deriv_dir, task, bad_subs)
-from functions import (get_sub_list, mean_amplitude)
+from functions import (get_sub_list)
 
 # Handle directories
 out_dir = analysis_dir / 'fooof'
@@ -40,6 +43,7 @@ for i, sub in enumerate(sub_list):
     fooof_file = deriv_path / f'{sub}_task-{task}_fooof.tsv'
     fooof_df = pd.read_csv(fooof_file, sep='\t')
     fooof_df.insert(1, 'age', age)
+
     # Handle output data frame
     if i == 0:
         df_long = fooof_df.copy()

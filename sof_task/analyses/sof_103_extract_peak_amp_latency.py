@@ -7,10 +7,14 @@ evoked objects for conditions of interest.
 
 # Import libraries
 import sys
+import os
+
+os.chdir(sys.path[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from mne import (read_evokeds, pick_channels)
 from mne.channels import combine_channels
@@ -26,7 +30,10 @@ sub_list = get_sub_list(deriv_dir, allow_all=True)
 
 # Remove subjects from list
 for bad_sub in bad_subs:
-    sub_list.remove(bad_sub)
+    if bad_sub in sub_list:
+        sub_list.remove(bad_sub)
+
+show_fig = False
 
 # Ask for subject IDs to analyze
 for i, sub in enumerate(sub_list):
@@ -47,8 +54,10 @@ for i, sub in enumerate(sub_list):
                              condition='face-object', verbose=False)
 
     # Filter them with a 'gentle' low-pass filter of 30Hz and 20Hz
-    scene_diff_30lpf = scene_diff.copy().filter(None, 30)
-    face_diff_30lpf = face_diff.copy().filter(None, 30)
+    scene_diff_30lpf = scene_diff.copy().filter(None, 30, method='iir',
+                                                verbose=False)
+    face_diff_30lpf = face_diff.copy().filter(None, 30, method='iir',
+                                              verbose=False)
 
     # Make virtual electrodes
     new_chans = {
@@ -62,22 +71,67 @@ for i, sub in enumerate(sub_list):
     face_diff = combine_channels(face_diff, new_chans)
     face_diff_30lpf = combine_channels(face_diff_30lpf, new_chans)
 
-    # Extract data
+    # Extract and plot scene data
+    tmin, tmax = .12, .25
     scene_peaks = peak_amp_lat(scene_diff_30lpf, mode='pos',
-                               tmin=.15, tmax=.25)
+                               tmin=tmin, tmax=tmax)
     scene_peaks.insert(0, 'id', sub.replace('sub-', ''))
     scene_peaks.insert(1, 'age_group', age)
     scene_peaks.insert(2, 'condition', 'scene')
     scene_peaks.insert(3, 'hemisphere', ['left', 'right'])
+
+    fig, ax = plt.subplots(nrows=2, ncols=1)
+    fig.set_size_inches(8, 8)
+    var_list = ['peak_amplitude', 'peak_latency', 'tmin', 'tmax']
+    for ai, ch in enumerate(scene_diff_30lpf.ch_names):
+        amp, lat, tmin, tmax = scene_peaks.iloc[ai][var_list]
+        mv = scene_diff_30lpf.data[ai, :]
+        times = scene_diff_30lpf.times
+        ax[ai].plot(times, mv, 'k', linewidth=1)
+        ax[ai].plot(lat, amp, 'r|')
+        ax[ai].axhline(0, linestyle='--', color='black', linewidth=.5)
+        ax[ai].axvline(0, linestyle='--', color='black', linewidth=.5)
+        ax[ai].set_title(f'{sub}: {ch}')
+        ax[ai].set_xlim((-.2, .35))
+        ax[ai].axhline(amp, linestyle=':', color='red', linewidth=.5)
+        ax[ai].axvspan(tmin, tmax, alpha=.4, color='grey')
+    plt.tight_layout()
+    if show_fig:
+        plt.show()
+
+    # Extract and plot face data
+    tmin, tmax = .10, .18
+    if sub == 'sub-130':
+        tmax = .17
+    if sub == 'sub-113':
+        tmax = .16
     face_peaks = peak_amp_lat(face_diff_30lpf, mode='neg',
-                              tmin=.1, tmax=.17)
+                              tmin=tmin, tmax=tmax)
     face_peaks.insert(0, 'id', sub.replace('sub-', ''))
     face_peaks.insert(1, 'age_group', age)
     face_peaks.insert(2, 'condition', 'face')
     face_peaks.insert(3, 'hemisphere', ['left', 'right'])
-    sub_df = pd.concat([scene_peaks, face_peaks])
+    fig, ax = plt.subplots(nrows=2, ncols=1)
+    fig.set_size_inches(8, 8)
+    var_list = ['peak_amplitude', 'peak_latency', 'tmin', 'tmax']
+    for ai, ch in enumerate(scene_diff_30lpf.ch_names):
+        amp, lat, tmin, tmax = face_peaks.iloc[ai][var_list]
+        mv = face_diff_30lpf.data[ai, :]
+        times = face_diff_30lpf.times
+        ax[ai].plot(times, mv, 'k', linewidth=1)
+        ax[ai].plot(lat, amp, 'r|')
+        ax[ai].axhline(0, linestyle='--', color='black', linewidth=.5)
+        ax[ai].axvline(0, linestyle='--', color='black', linewidth=.5)
+        ax[ai].set_title(f'{sub}-{ch}')
+        ax[ai].set_xlim((-.2, .35))
+        ax[ai].axhline(amp, linestyle=':', color='red', linewidth=.5)
+        ax[ai].axvspan(tmin, tmax, alpha=.4, color='grey')
+    plt.tight_layout()
+    if show_fig:
+        plt.show()
 
     # Handle output data frame
+    sub_df = pd.concat([scene_peaks, face_peaks])
     if i == 0:
         df_long = sub_df.copy()
     else:
