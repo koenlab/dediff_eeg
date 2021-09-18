@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.integrate import trapezoid
+from scipy.signal import find_peaks
 
 from mne import Evoked, pick_channels
 
@@ -108,102 +109,133 @@ def frac_area_latency(inst, mode='abs', frac=None, tmin=None, tmax=None):
     return ch_names, area, frac_lat_times
 
 
-def peak_amp_lat(inst, mode='abs', tmin=None, tmax=None, picks=None,
-                 adaptive=True, return_microvolts=True):
-    """[summary]
+def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
+                 return_microvolts=True, width=2, frac_peak=None):
+    """Measure peak amplitude, latency, and fractional peak onset. This
+    can be run on ERPs for peak latency and amplitude. Fractional peak
+    onset is better conducted on difference waves. Note fractional peak
+    onset is only returned if frac_peak is a float between 0 and 1.
+
+    Uses :func:~scipy.signal.find_peaks to locate peaks.
 
     Parameters
     ----------
-    inst : [type]
-        [description]
-    mode : str, optional
-        [description], by default 'abs'
-    tmin : [type], optional
-        [description], by default None
-    tmax : [type], optional
-        [description], by default None
-    picks : [type], optional
-        [description], by default True
-    adaptive : bool, optional
-        [description], by default True
-    return_microvolts : bool, optional
-        [description], by default True
+    inst : :class:~mne.Evoked object
+        A single instance of an :class:~mne.Evoked object.
+    mode : {‘pos’, ‘neg’, ‘abs’} (defaults 'pos')
+        Controls whether positive ('pos'), negative ('neg') or absolute
+        ('abs') peaks are detected. 'pos' searches for a postiive going peak
+        (but the peak can take on a negative voltage). 'neg' searches for
+        negative going peaks by scaling the voltages by -1 (but the peaks
+        can take on a positive voltage. 'abs' finds the largest peak
+        regardless of sign.
+    tmin : float | None (defaults None)
+        The minimum point in time to be considered for peak getting. If None
+        (default), the beginning of the data is used.
+    tmax : float | None (defaults None)
+        The maximum point in time to be considered for peak getting. If None
+        (default), the end of the data is used.
+    picks : str|list|int|None (defaults None)
+        Channels to include. integers and lists of integers will be interpreted
+        as channel indices. str and lists of strings will be interpreted as
+        channel names.
+    return_microvolts : bool (defaults True)
+        If True, returns the peak amplitude in μV.
+    width : int|ndarray|list (defaults 2)
+        Required width of peaks in samples. An integer is treated as the
+        minimal required width (with no maximum). A ndarray or list of
+        integers specifies the minimal and maximal widths, respectively.
+    frac_peak : float [0, 1]|None (defaults None)
+        If a float value, returns the latency where the voltage falls below
+        frac_peak * peak_amplitude. If None, fractional peak latency is not
+        returned.
 
     Returns
     -------
-    [type]
-        [description]
+    data : instace of :class:~pandas.DataFrame
+        A :class:~pandas.DataFrame with the peak amplitude, latency,
+        fractional peak latency, tmin, and tmax for each channel
+        specified by picks.
     """
 
     # Check inst input
     if isinstance(inst, Evoked):
         TypeError('inst must be of Evoked type')
 
+    # Check frac_peak
+    if frac_peak is not None:
+        if frac_peak < 0 or frac_peak > 1:
+            ValueError('frac_peak must be float between 0 and 1')
+
+    # Check mode
+    if mode not in ['neg', 'pos', 'abs']:
+        ValueError("mode must be 'pos', 'neg', or 'abs'")
+
     # Handle picks
+    if isinstance(picks, int) or isinstance(picks, str):
+        picks = [picks]
     picks = _handle_picks(inst.ch_names, picks)
+
+    # Extract data
     data = inst.data
     if return_microvolts:
         data *= 1e6
-    if mode not in ['neg', 'pos', 'abs']:
-        ValueError("mode must be 'pos', 'neg', or 'abs'")
 
     # Extract times and handle tmin and tmax
     times = inst.times
     if tmin not in times and tmax not in times:
         ValueError('tmin and tmax must have values in inst.times')
 
-    # Get the sampling rate in seconds
-    srate = (1 / inst.info['sfreq'])
-
     # Initialize output dataframe
     out_df = pd.DataFrame(columns=['ch_name', 'tmin', 'tmax',
-                                   'peak_amplitude', 'peak_latency'])
+                                   'peak_amplitude', 'peak_latency'
+                                   'frac_peak', 'frac_peak_onset',
+                                   'frac_peak_amplitude'])
 
     # Loop through channels
     for i, pick in enumerate(picks):
 
-        # Reset ch_tmin and ch_tmax
-        ch_tmin = tmin
-        ch_tmax = tmax
+        # Get time window for this iteration
+        time_mask = np.logical_and(times >= tmin, times <= tmax)
+        time_window = times[time_mask]
 
-        # Find the peak latency and amplitude
-        while True:
-
-            # Get time window for this iteration
-            time_mask = np.logical_and(times >= ch_tmin, times <= ch_tmax)
-            time_window = times[time_mask]
-
-            # Extract windowed data
-            data_window = data[pick, time_mask]
-            sign_window = np.sign(data_window)
-            if mode == 'neg':
-                data_window[data_window > 0] = 0
-            elif mode == 'pos':
-                data_window[data_window < 0] = 0
+        # Extract windowed data and manipulate as needed
+        data_window = data[pick, time_mask]
+        sign_window = np.sign(data_window)
+        if mode == 'neg':
+            data_window *= -1
+        elif mode == 'abs':
             data_window = np.abs(data_window)
 
-            # Extract peak information
-            peak_lat_index = np.argmax(data_window)
-            peak_latency = time_window[peak_lat_index]
-            peak_amplitude = data_window[peak_lat_index]
-            peak_sign = sign_window[peak_lat_index]
+        # Find the peak indices and amplitudes
+        peaks, _ = find_peaks(data_window)
+        amplitudes = data_window[peaks]
 
-            # If adaptive, adjust window
-            if adaptive:
-                if peak_latency == ch_tmin:
-                    ch_tmin += -srate
-                    ch_tmax += -srate
-                elif peak_latency == ch_tmax:
-                    ch_tmin += srate
-                    ch_tmax += srate
-                else:
-                    break
-            else:
-                break
+        # Extract peak information
+        peak_index = peaks[np.argmax(amplitudes)]
+        peak_latency = time_window[peak_index]
+        peak_amplitude = np.abs(data_window[peak_index])
+        peak_amplitude *= sign_window[peak_index]
+
+        # Search for fractional peak onset
+        if frac_peak is not None:
+            frac_index = peak_index
+            frac_amplitude = peak_amplitude
+            frac_p = np.abs(frac_amplitude / peak_amplitude)
+            while frac_p > frac_peak:
+                frac_index -= 1
+                frac_amplitude = data[frac_index]
+                frac_p = np.abs(frac_amplitude / peak_amplitude)
+            frac_peak_onset = times[frac_index]
+        else:
+            frac_peak = 'n/a'
+            frac_peak_onset = 'n/a'
+            frac_peak_amplitude = 'n/a'
 
         # Add to output
-        out_df.at[i, :] = [ch_names[pick], ch_tmin, ch_tmax,
-                           peak_amplitude * peak_sign, peak_latency]
+        out_df.at[i, :] = [inst.ch_names[pick], tmin, tmax,
+                           peak_amplitude, peak_latency, frac_peak,
+                           frac_peak_onset, frac_peak_amplitude]
 
     # Return
     return out_df
@@ -211,26 +243,6 @@ def peak_amp_lat(inst, mode='abs', tmin=None, tmax=None, picks=None,
 
 def mean_amplitude(inst, tmin=None, tmax=None, picks=None,
                    return_microvolts=True):
-    """[summary]
-
-    Parameters
-    ----------
-    inst : [type]
-        [description]
-    tmin : [type], optional
-        [description], by default None
-    tmax : [type], optional
-        [description], by default None
-    picks : [type], optional
-        [description], by default None
-    return_microvolts : bool, optional
-        [description], by default True
-
-    Returns
-    -------
-    [type]
-        [description]
-    """
     # Check inst input
     if isinstance(inst, Evoked):
         TypeError('inst must be of Evoked type')
