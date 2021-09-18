@@ -13,6 +13,9 @@ ICs are then manually flagged.
 
 # Import Libraries
 import sys
+import os
+
+os.chdir(sys.path[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 

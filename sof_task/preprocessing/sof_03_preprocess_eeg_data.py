@@ -7,6 +7,9 @@ the SOF (scene, object, face) task and runs some preprocessing on the data.
 
 # Import Libraries
 import sys
+import os
+
+os.chdir(sys.path[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 
