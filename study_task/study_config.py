@@ -8,7 +8,7 @@ import sys
 os.chdir(sys.path[0])
 
 # Bad Subjects not included in group analysis
-bad_subs = []
+bad_subs = ['sub-216', 'sub-218']
 
 # Define task name
 task = 'study'
