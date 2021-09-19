@@ -92,7 +92,7 @@ for sub in sub_list:
         tmax = preprocess_options['evoked_tmax']
         evokeds = [x.crop(tmin=tmin, tmax=tmax) for x in evokeds]
 
-        # Step 5: write evokeds
+        # Step 4: write evokeds
         # Write evoked file
         evoked_fif_file = deriv_path / \
             f'{sub}_task-{task}_ref-{ref}_lpf-none_ave.fif.gz'

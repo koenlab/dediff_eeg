@@ -24,8 +24,8 @@ import mne
 from autoreject import (Ransac, get_rejection_threshold)
 
 from monster_config import (bids_dir, deriv_dir, event_dict,
-                            task, preprocess_options, bv_montage,
-                            get_sub_list)
+                            task, preprocess_options, bv_montage)
+from functions import get_sub_list
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)

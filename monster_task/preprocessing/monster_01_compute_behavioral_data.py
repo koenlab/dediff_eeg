@@ -17,8 +17,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
-from monster_config import (bids_dir, deriv_dir, task,
-                            get_sub_list)
+from monster_config import (bids_dir, deriv_dir, task)
+from functions import get_sub_list
 
 # Overwrite
 overwrite = True

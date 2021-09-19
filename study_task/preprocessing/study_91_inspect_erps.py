@@ -1,12 +1,24 @@
+"""
+Script: study_91_inspect_sof_erps.py
+Creator: Joshua D. Koen
+Description: Visuall inspect ERPs with interactive graphs
+"""
+
 # Import Libraries
+import sys
+import os
+
+os.chdir(sys.path[0])
+sys.path.append('../../')  # For functions file
+sys.path.append('..')  # For config file
+
 import json
 
 from mne.viz import plot_compare_evokeds
 import mne
 
-
-from study_config import (deriv_dir, task,
-                          get_sub_list)
+from study_config import (deriv_dir, task)
+from functions import get_sub_list
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -19,7 +31,7 @@ if filter_data == 'y':
 
 for sub_string in sub_list:
 
-    # SUBJECT INFORMATION DEFINITION ###
+    # SUBJECT INFORMATION DEFINITION
     # Define the Subject ID and paths
     deriv_path = deriv_dir / sub_string
     fig_path = deriv_path / 'figures'

@@ -17,7 +17,8 @@ import json
 from mne import read_epochs
 from mne.preprocessing import read_ica
 
-from monster_config import (deriv_dir, task, get_sub_list)
+from monster_config import (deriv_dir, task)
+from functions import get_sub_list
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)

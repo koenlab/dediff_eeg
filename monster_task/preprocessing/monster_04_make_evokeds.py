@@ -20,8 +20,8 @@ import json
 from mne import read_epochs
 import mne
 
-from monster_config import (deriv_dir, task, preprocess_options,
-                            get_sub_list)
+from monster_config import (deriv_dir, task, preprocess_options)
+from functions import get_sub_list
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
@@ -99,7 +99,7 @@ for sub in sub_list:
         tmax = preprocess_options['evoked_tmax']
         evokeds = [x.crop(tmin=tmin, tmax=tmax) for x in evokeds]
 
-        # Step 5: write evokeds
+        # Step 4: write evokeds
         # Write evoked file
         evoked_fif_file = deriv_path / \
             f'{sub}_task-{task}_ref-{ref}_lpf-none_ave.fif.gz'

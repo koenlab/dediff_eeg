@@ -25,8 +25,9 @@ from autoreject import get_rejection_threshold
 
 from monster_config import (bids_dir, deriv_dir, task,
                             preprocess_options,
-                            bv_montage, get_sub_list)
+                            bv_montage)
 from monster_config import event_dict as event_id
+from functions import get_sub_list
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)

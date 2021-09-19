@@ -23,8 +23,9 @@ from mne.preprocessing import read_ica
 from mne.viz import plot_compare_evokeds
 
 from monster_config import (deriv_dir, report_dir, task,
-                            get_sub_list, bv_montage)
+                            bv_montage)
 from monster_config import event_dict as event_id
+from functions import get_sub_list
 
 # Get rid of warning
 import matplotlib
