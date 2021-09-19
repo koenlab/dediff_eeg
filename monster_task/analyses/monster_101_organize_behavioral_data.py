@@ -1,4 +1,4 @@
-import numpy as np
+
 import pandas as pd
 
 from monster_config import (analysis_dir, deriv_dir, task, get_sub_list)
@@ -13,14 +13,14 @@ sub_list = get_sub_list(deriv_dir, allow_all=True)
 
 
 # Loop over subjects)
-for sub_string in sub_list:
-    
+for sub in sub_list:
+
     # Define the Subject ID and paths
-    deriv_path = deriv_dir / sub_string
-    print(f'Loading task-{task} data for {sub_string}')
-    
+    deriv_path = deriv_dir / sub
+    print(f'Loading task-{task} data for {sub}')
+
     # Write summary data file
-    summary_file = deriv_path / f'{sub_string}_task-{task}_desc-summarystats_beh.tsv'
+    summary_file = deriv_path / f'{sub}_task-{task}_desc-summarystats_beh.tsv'
     all_dfs.append(pd.read_csv(summary_file, sep='\t'))
 
 # Merge into group df
