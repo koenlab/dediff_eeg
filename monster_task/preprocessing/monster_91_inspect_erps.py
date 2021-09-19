@@ -1,9 +1,21 @@
+"""
+Script: monster_91_inspect_erps.py
+Creator: Joshua D. Koen
+Description: Visuall inspect ERPs with interactive graphs
+"""
+
 # Import Libraries
+import sys
+import os
+
+os.chdir(sys.path[0])
+sys.path.append('../../')  # For functions file
+sys.path.append('..')  # For config file
+
 import json
 
 from mne.viz import plot_compare_evokeds
 import mne
-
 
 from monster_config import (deriv_dir, task,
                             get_sub_list)
@@ -19,7 +31,7 @@ if filter_data == 'y':
 
 for sub_string in sub_list:
 
-    # SUBJECT INFORMATION DEFINITION ###
+    # SUBJECT INFORMATION DEFINITION
     # Define the Subject ID and paths
     deriv_path = deriv_dir / sub_string
     fig_path = deriv_path / 'figures'
