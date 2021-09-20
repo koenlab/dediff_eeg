@@ -149,7 +149,7 @@ def frac_area_latency(inst, mode='abs', frac=None, tmin=None, tmax=None):
 
 
 def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
-                 return_microvolts=True, width=2, frac_peak=None):
+                 return_microvolts=True, width=2):
     """Measure peak amplitude, latency, and fractional peak onset. This
     can be run on ERPs for peak latency and amplitude. Fractional peak
     onset is better conducted on difference waves. Note fractional peak
@@ -184,10 +184,6 @@ def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
         Required width of peaks in samples. An integer is treated as the
         minimal required width (with no maximum). A ndarray or list of
         integers specifies the minimal and maximal widths, respectively.
-    frac_peak : float [0, 1]|None (defaults None)
-        If a float value, returns the latency where the voltage falls below
-        frac_peak * peak_amplitude. If None, fractional peak latency is not
-        returned.
 
     Returns
     -------
@@ -200,11 +196,6 @@ def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
     # Check inst input
     if isinstance(inst, Evoked):
         TypeError('inst must be of Evoked type')
-
-    # Check frac_peak
-    if frac_peak is not None:
-        if frac_peak < 0 or frac_peak > 1:
-            ValueError('frac_peak must be float between 0 and 1')
 
     # Check mode
     if mode not in ['neg', 'pos', 'abs']:
@@ -227,9 +218,7 @@ def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
 
     # Initialize output dataframe
     out_df = pd.DataFrame(columns=['ch_name', 'tmin', 'tmax',
-                                   'peak_amplitude', 'peak_latency'
-                                   'frac_peak', 'frac_peak_onset',
-                                   'frac_peak_amplitude'])
+                                   'peak_amplitude', 'peak_latency'])
 
     # Loop through channels
     for i, pick in enumerate(picks):
@@ -247,7 +236,7 @@ def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
             data_window = np.abs(data_window)
 
         # Find the peak indices and amplitudes
-        peaks, _ = find_peaks(data_window)
+        peaks, _ = find_peaks(data_window, width=width)
         amplitudes = data_window[peaks]
 
         # Extract peak information
@@ -256,25 +245,9 @@ def peak_amp_lat(inst, mode='pos', tmin=None, tmax=None, picks=None,
         peak_amplitude = np.abs(data_window[peak_index])
         peak_amplitude *= sign_window[peak_index]
 
-        # Search for fractional peak onset
-        if frac_peak is not None:
-            frac_index = peak_index
-            frac_amplitude = peak_amplitude
-            frac_p = np.abs(frac_amplitude / peak_amplitude)
-            while frac_p > frac_peak:
-                frac_index -= 1
-                frac_amplitude = data[frac_index]
-                frac_p = np.abs(frac_amplitude / peak_amplitude)
-            frac_peak_onset = times[frac_index]
-        else:
-            frac_peak = 'n/a'
-            frac_peak_onset = 'n/a'
-            frac_peak_amplitude = 'n/a'
-
         # Add to output
         out_df.at[i, :] = [inst.ch_names[pick], tmin, tmax,
-                           peak_amplitude, peak_latency, frac_peak,
-                           frac_peak_onset, frac_peak_amplitude]
+                           peak_amplitude, peak_latency]
 
     # Return
     return out_df
