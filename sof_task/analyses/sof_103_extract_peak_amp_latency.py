@@ -54,9 +54,9 @@ for i, sub in enumerate(sub_list):
                              condition='face-object', verbose=False)
 
     # Filter them with a 'gentle' low-pass filter of 30Hz
-    scene_diff_30lpf = scene_diff.copy().filter(None, 30, method='iir',
+    scene_diff_30lpf = scene_diff.copy().filter(None, 30,
                                                 verbose=False)
-    face_diff_30lpf = face_diff.copy().filter(None, 30, method='iir',
+    face_diff_30lpf = face_diff.copy().filter(None, 30,
                                               verbose=False)
 
     # Make virtual electrodes
