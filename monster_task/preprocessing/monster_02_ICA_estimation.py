@@ -8,7 +8,7 @@ Description: This script handles ICA estimation for the Monster task.
 import sys
 import os
 
-os.chdir(sys.path[0])
+os.chdir(os.path.split(__file__)[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 

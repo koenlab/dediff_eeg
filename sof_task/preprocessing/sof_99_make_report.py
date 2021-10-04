@@ -8,7 +8,7 @@ Description: Makes an html report of the data
 import sys
 import os
 
-os.chdir(sys.path[0])
+os.chdir(os.path.split(__file__)[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 

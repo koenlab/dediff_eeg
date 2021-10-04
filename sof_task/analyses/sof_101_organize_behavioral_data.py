@@ -9,7 +9,7 @@ evoked objects for conditions of interest.
 import sys
 import os
 
-os.chdir(sys.path[0])
+os.chdir(os.path.split(__file__)[0])
 sys.path.append('../../')  # For functions file
 sys.path.append('..')  # For config file
 
@@ -32,7 +32,8 @@ sub_list = get_sub_list(deriv_dir, allow_all=True)
 
 # Remove subjects from list
 for bad_sub in bad_subs:
-    sub_list.remove(bad_sub)
+    if bad_sub in sub_list:
+        sub_list.remove(bad_sub)
 
 # Loop over subjects)
 for sub in sub_list:

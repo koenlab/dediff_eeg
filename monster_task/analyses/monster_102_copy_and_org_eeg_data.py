@@ -16,8 +16,9 @@ sys.path.append('..')  # For config file
 from shutil import copyfile
 
 from mne import (read_evokeds, write_evokeds, read_epochs)
-from sof_config import (analysis_dir, deriv_dir, task,
-                        bad_subs)
+
+from monster_config import (analysis_dir, deriv_dir, task,
+                            bad_subs)
 from functions import get_sub_list
 
 # Make output folders
@@ -64,7 +65,7 @@ for sub in sub_list:
     write_evokeds(out_erps / evoked_file, evokeds)
 
     # Add individual evokeds into dictionary
-    conds = [e.comment for e in evokeds]
+    conds = [e.comment for e in evokeds if 'abin' not in e.comment]
     for i, c in enumerate(conds):
         if c not in young_erps:
             young_erps[c] = []

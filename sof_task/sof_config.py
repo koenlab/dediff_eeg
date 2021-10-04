@@ -4,8 +4,7 @@ import numpy as np
 from mne.channels import read_custom_montage
 
 import os
-import sys
-os.chdir(sys.path[0])
+os.chdir(os.path.split(__file__)[0])
 
 # Bad Subjects not included in group analysis
 bad_subs = ['sub-106', 'sub-202', 'sub-218']

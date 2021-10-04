@@ -1,5 +1,5 @@
 """
-Script: sof_07_estimate_fooof.py
+Script: study_07_estimate_fooof.py
 Creator: Joshua D. Koen
 Description: This script loads cleaned epoch data runs the
 FOOOF algorithm. The script also writes an HTML report.
@@ -25,7 +25,7 @@ from mne.time_frequency import psd_welch
 
 from fooof import FOOOFGroup
 
-from sof_config import (deriv_dir, task)
+from study_config import (deriv_dir, task)
 from functions import get_sub_list
 
 # Make report folder
@@ -68,20 +68,20 @@ for sub in sub_list:
         f'{sub}_task-{task}_ref-avg_desc-cleaned_epo.fif.gz'
     if not epochs_fif_file.is_file():
         continue
-    epochs = read_epochs(epochs_fif_file)["repeat==1 and n_responses==0"]
+    epochs = read_epochs(epochs_fif_file)["study_n_responses==1"]
     epochs.drop_channels(['VEOG', 'HEOG', 'FT9', 'FT10', 'TP9', 'TP10'])
-    epochs.apply_baseline(baseline=(None, 0)).filter(0, 40, verbose=True)
+    epochs.apply_baseline(baseline=(None, 0))
 
     # Run first pass
     fm_orig = fit_fooof(epochs)
 
     # Save the FOOOF model in derivatives
-    fooof_out_file = f'{sub}_task-sof_ref-avg_desc-orig_fooof'
+    fooof_out_file = f'{sub}_task-study_ref-avg_desc-orig_fooof'
     fm_orig.save(fooof_out_file, file_path=deriv_path,
                  save_results=True, save_data=True)
 
     # Save Results
-    fooof_results_file = f'{sub}_task-sof_desc-orig_fooofreport.pdf'
+    fooof_results_file = f'{sub}_task-study_desc-orig_fooofreport.pdf'
     fm_orig.save_report(fooof_results_file, file_path=report_dir)
 
     # Find bad r2 channel
@@ -105,12 +105,12 @@ for sub in sub_list:
     fm_interp = fit_fooof(epochs)
 
     # Save the FOOOF model in derivatives
-    fooof_out_file = f'{sub}_task-sof_ref-avg_desc-interp_fooof'
+    fooof_out_file = f'{sub}_task-study_ref-avg_desc-interp_fooof'
     fm_interp.save(fooof_out_file, file_path=deriv_path,
                    save_results=True, save_data=True)
 
     # Save Results
-    fooof_results_file = f'{sub}_task-sof_desc-interp_fooofreport.pdf'
+    fooof_results_file = f'{sub}_task-study_desc-interp_fooofreport.pdf'
     fm_interp.save_report(fooof_results_file, file_path=report_dir)
 
     # Add to data frame
@@ -120,5 +120,5 @@ for sub in sub_list:
     fooof_df['error_interp'] = fm_interp.get_params('error')
 
     # Save dataframe
-    df_file = deriv_path / f'{sub}_task-sof_fooof.tsv'
+    df_file = deriv_path / f'{sub}_task-study_fooof.tsv'
     fooof_df.to_csv(df_file, sep='\t', index=False)
