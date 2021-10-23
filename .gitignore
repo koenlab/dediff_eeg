@@ -1,5 +1,4 @@
 # Files to ignore
-**/*_00_data_import.py
 
 # MacOS and Server
 .DS_Store
