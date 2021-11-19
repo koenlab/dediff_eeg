@@ -31,7 +31,7 @@ ref = 'mastoids'
 
 # Frequecies to estimate
 freqs = np.arange(3, 36, 1)  # Estimate 4-50Hz in linear intervals
-n_cycles = 3
+n_cycles = freqs
 
 # Ask for subject IDs to analyze
 sub_list = get_sub_list(deriv_dir, allow_all=True)
