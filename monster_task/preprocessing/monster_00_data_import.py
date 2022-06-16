@@ -115,16 +115,9 @@ for sub_string in sub_list:
     # Define the source data file
     source_vhdr = source_path / f'{sub_string}_task-{task}_run-01_eeg.vhdr'
 
-    # Anonymize Dictionary
-    anonymize = {
-        'daysback': (365*randrange(100, 110)) +
-                    (randrange(-120, 120) + random())
-    }
-
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG', 'HEOG'])
-    raw.anonymize(daysback=anonymize['daysback'])
 
     # Fix channel order (swap VEOG and HEOG)
     if bids_id in ['121', '230', '237']:
@@ -238,10 +231,10 @@ for sub_string in sub_list:
     events_data[cols_to_add] = 'n/a'
 
     # Check that events_data has same # rows as events
-    if events_data.shape[0]-1 != beh_data.shape[0]:
-        raise ValueError(
-            'Events data has different number of trials ' +
-            'than behavioral data. Fix this!!!')
+    # if events_data.shape[0]-1 != beh_data.shape[0]:
+    #     raise ValueError(
+    #         'Events data has different number of trials ' +
+    #         'than behavioral data. Fix this!!!')
 
     # Update with values
     counter = 0 # Keep track of current row in beh_data

@@ -26,6 +26,7 @@ import mne
 
 from study_config import (bids_dir, source_dir, deriv_dir,
                           event_dict, task, bad_chans)
+from functions import get_sub_list
 
 # Overwrite BIDS
 overwrite = True
@@ -102,16 +103,9 @@ for sub in sub_list:
     # Define the source data file
     source_vhdr = source_path / f'{sub}_task-{task}_run-01_eeg.vhdr'
 
-    # Anonymize Dictionary
-    anonymize = {
-        'daysback': (365*randrange(100, 110)) +
-                    (randrange(-120, 120) + random())
-    }
-
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG', 'HEOG'])
-    raw.anonymize(daysback=anonymize['daysback'])
 
     # Fix channel order (swap VEOG and HEOG)
     if bids_id in ['121', '230', '237']:

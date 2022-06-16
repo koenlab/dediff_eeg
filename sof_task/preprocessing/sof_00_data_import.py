@@ -90,16 +90,9 @@ for sub in sub_list:
     # Define the source data file
     source_vhdr = source_path / f'{sub}_task-{task}_run-01_eeg.vhdr'
 
-    # Anonymize Dictionary
-    anonymize = {
-        'daysback': (365 * randrange(100, 110)) +
-                    (randrange(-120, 120) + random())
-    }
-
     # Read in raw bv from source
     raw = read_raw_brainvision(source_vhdr, misc=['Photosensor'],
                                eog=['VEOG', 'HEOG'])
-    raw.anonymize(daysback=anonymize['daysback'])
 
     # HANDLE SPECIAL SUBJECTS
     # Fix channel order (swap VEOG and HEOG)
